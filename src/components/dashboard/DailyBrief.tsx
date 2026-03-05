@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import {
   CheckCircle2,
   Circle,
-  TrendingUp,
   Calendar,
   Flame,
-  DollarSign,
   Star,
   ArrowRight,
   Sparkles,
@@ -45,7 +43,6 @@ export default function DailyBrief() {
   const [todos, setTodos] = useState<Todo[]>([])
   const [habits, setHabits] = useState<Habit[]>([])
   const [completions, setCompletions] = useState<HabitCompletion[]>([])
-  const [upcomingAssignments, setUpcomingAssignments] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
   const todayStr = new Date().toISOString().split('T')[0]
@@ -60,17 +57,15 @@ export default function DailyBrief() {
   useEffect(() => {
     async function load() {
       try {
-        const [{ data: todosData }, { data: habitsData }, { data: completionsData }, { data: txData }] =
+        const [{ data: todosData }, { data: habitsData }, { data: completionsData }] =
           await Promise.all([
             supabase.from('todos').select('*').eq('completed', false).order('due_date', { ascending: true }).limit(5),
             supabase.from('habits').select('*').order('order_index'),
             supabase.from('habit_completions').select('*').eq('completed_date', todayStr),
-            supabase.from('assignments').select('id, due_date, completed').gte('due_date', new Date().toISOString().split('T')[0]),
           ])
         setTodos((todosData as Todo[]) || [])
         setHabits((habitsData as Habit[]) || [])
         setCompletions((completionsData as HabitCompletion[]) || [])
-        setUpcomingAssignments(((txData as {id:string,due_date:string,completed:boolean}[]) || []).filter(a => !a.completed).length)
       } catch (_) {
         // Supabase not configured yet — show placeholder UI
       } finally {
@@ -83,17 +78,15 @@ export default function DailyBrief() {
   const refreshBrief = () => { void (async () => {
     try {
       const todayStrLocal = new Date().toISOString().split('T')[0]
-      const [{ data: todosData }, { data: habitsData }, { data: completionsData }, { data: txData }] =
+      const [{ data: todosData }, { data: habitsData }, { data: completionsData }] =
         await Promise.all([
           supabase.from('todos').select('*').eq('completed', false).order('due_date', { ascending: true }).limit(5),
           supabase.from('habits').select('*').order('order_index'),
           supabase.from('habit_completions').select('*').eq('completed_date', todayStrLocal),
-          supabase.from('assignments').select('id, due_date, completed').gte('due_date', new Date().toISOString().split('T')[0]),
         ])
       setTodos((todosData as Todo[]) || [])
       setHabits((habitsData as Habit[]) || [])
       setCompletions((completionsData as HabitCompletion[]) || [])
-      setUpcomingAssignments(((txData as {id:string,due_date:string,completed:boolean}[]) || []).filter(a => !a.completed).length)
     } catch (_) {}
   })() }
 
@@ -178,7 +171,7 @@ export default function DailyBrief() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <StatCard
           label="Tasks Today"
           value={todos.length}
@@ -192,20 +185,6 @@ export default function DailyBrief() {
           sub="done today"
           icon={Flame}
           color="bg-rose-600"
-        />
-        <StatCard
-          label="Month Income"
-          value={upcomingAssignments}
-          sub="this month"
-          icon={DollarSign}
-          color="bg-emerald-500"
-        />
-        <StatCard
-          label="Month Spend"
-          value="—"
-          sub="this month"
-          icon={TrendingUp}
-          color="bg-amber-500"
         />
       </div>
 
