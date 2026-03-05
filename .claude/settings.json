@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create vite@latest . -- --template react-ts --yes)",
+      "Bash(npm create vite@latest . -- --template react-ts)",
+      "Bash(npx --yes create-vite@latest . --template react-ts)",
+      "Bash(npm install)",
+      "Bash(\"/Users/reedwebster/Desktop/Ella CRM/src/lib/types.ts\":*)",
+      "Bash(python3 -:*)",
+      "Bash(\"/Users/reedwebster/Desktop/Ella CRM/src/hooks/useRealtimeSync.ts\":*)",
+      "Bash(\"/Users/reedwebster/Desktop/Ella CRM/supabase/schema.sql\":*)",
+      "Bash(node --input-type=module --eval \":*)",
+      "Bash(git --version)"
+    ],
+    "additionalDirectories": [
+      "/Users/reedwebster/Desktop/Ella CRM"
+    ]
+  }
+}
