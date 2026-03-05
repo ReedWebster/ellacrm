@@ -9,6 +9,13 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['bloom-icon.svg', 'apple-touch-icon.png'],
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        // Don't cache Supabase auth API calls
+        navigateFallback: 'index.html',
+        runtimeCaching: [],
+      },
       manifest: {
         name: "SWAGR — Ella's Hub",
         short_name: 'SWAGR',
