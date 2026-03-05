@@ -11,7 +11,8 @@
       "Bash(\"/Users/reedwebster/Desktop/Ella CRM/supabase/schema.sql\":*)",
       "Bash(node --input-type=module --eval \":*)",
       "Bash(git --version)",
-      "Bash(chmod +x \"/Users/reedwebster/Desktop/Ella CRM/.git/hooks/post-commit\")"
+      "Bash(chmod +x \"/Users/reedwebster/Desktop/Ella CRM/.git/hooks/post-commit\")",
+      "Bash(npm install -D vite-plugin-pwa sharp)"
     ],
     "additionalDirectories": [
       "/Users/reedwebster/Desktop/Ella CRM"

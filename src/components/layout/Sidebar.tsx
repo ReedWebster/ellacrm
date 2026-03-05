@@ -51,8 +51,8 @@ export default function Sidebar({ activeView, onNavigate, collapsed }: SidebarPr
           <Flower2 size={14} className="text-white" />
         </div>
         {!collapsed && (
-          <span className="ml-2.5 font-semibold text-[17px] text-plum-800 dark:text-white tracking-tight select-none">
-            Bloom
+          <span className="ml-2.5 font-bold text-[17px] text-plum-800 dark:text-white tracking-[-0.05em] uppercase select-none">
+            SWAGR
           </span>
         )}
       </div>
@@ -93,7 +93,7 @@ export default function Sidebar({ activeView, onNavigate, collapsed }: SidebarPr
       {/* Footer */}
       {!collapsed && (
         <div className="px-4 py-4 border-t border-black/[0.05] dark:border-white/[0.05]">
-          <p className="text-[11px] text-mauve-400 dark:text-mauve-500 select-none">Ella's personal hub</p>
+          <p className="text-[11px] text-mauve-400 dark:text-mauve-500 select-none">Ella's hub</p>
         </div>
       )}
     </aside>

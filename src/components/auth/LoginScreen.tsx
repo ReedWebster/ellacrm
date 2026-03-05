@@ -20,7 +20,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-blush-50 dark:bg-mauve-900 flex items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-blush-50 dark:bg-mauve-900 flex items-center justify-center p-4">
       <button
         onClick={toggle}
         className="absolute top-4 right-4 p-2 rounded-xl text-mauve-400 hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors"
@@ -36,8 +36,8 @@ export default function LoginScreen() {
           <div className="w-14 h-14 rounded-[20px] bg-gradient-to-br from-blush-400 to-blush-600 flex items-center justify-center shadow-card-md mb-4">
             <Flower2 size={24} className="text-white" />
           </div>
-          <h1 className="text-[26px] font-semibold text-plum-800 dark:text-white tracking-tight">Bloom</h1>
-          <p className="text-[13px] text-mauve-400 mt-1">Ella's personal hub</p>
+          <h1 className="text-[28px] font-black text-plum-800 dark:text-white tracking-[-0.06em] uppercase">SWAGR</h1>
+          <p className="text-[13px] text-mauve-400 mt-1">Ella's hub</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-mauve-800 rounded-3xl shadow-card-md border border-black/[0.05] dark:border-white/[0.05] p-6 space-y-4">
