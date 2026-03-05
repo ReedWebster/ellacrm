@@ -7,10 +7,11 @@ import {
   Star,
   ArrowRight,
   Sparkles,
+  Clock,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
-import type { Todo, Habit, HabitCompletion } from '@/lib/types'
+import type { Todo, Habit, HabitCompletion, TimeBlock } from '@/lib/types'
 
 function StatCard({
   label,
@@ -39,10 +40,19 @@ function StatCard({
   )
 }
 
+function fmtTime(iso: string) {
+  const d = new Date(iso)
+  const h = d.getHours(), m = d.getMinutes()
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const dh = h > 12 ? h - 12 : h === 0 ? 12 : h
+  return `${dh}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
 export default function DailyBrief() {
   const [todos, setTodos] = useState<Todo[]>([])
   const [habits, setHabits] = useState<Habit[]>([])
   const [completions, setCompletions] = useState<HabitCompletion[]>([])
+  const [todayBlocks, setTodayBlocks] = useState<TimeBlock[]>([])
   const [loading, setLoading] = useState(true)
 
   const todayStr = new Date().toISOString().split('T')[0]
@@ -57,15 +67,17 @@ export default function DailyBrief() {
   useEffect(() => {
     async function load() {
       try {
-        const [{ data: todosData }, { data: habitsData }, { data: completionsData }] =
+        const [{ data: todosData }, { data: habitsData }, { data: completionsData }, { data: blocksData }] =
           await Promise.all([
             supabase.from('todos').select('*').eq('completed', false).order('due_date', { ascending: true }).limit(5),
             supabase.from('habits').select('*').order('order_index'),
             supabase.from('habit_completions').select('*').eq('completed_date', todayStr),
+            supabase.from('time_blocks').select('*').gte('start_time', todayStr + 'T00:00:00').lt('start_time', todayStr + 'T23:59:59').order('start_time'),
           ])
         setTodos((todosData as Todo[]) || [])
         setHabits((habitsData as Habit[]) || [])
         setCompletions((completionsData as HabitCompletion[]) || [])
+        setTodayBlocks((blocksData as TimeBlock[]) || [])
       } catch (_) {
         // Supabase not configured yet — show placeholder UI
       } finally {
@@ -78,15 +90,17 @@ export default function DailyBrief() {
   const refreshBrief = () => { void (async () => {
     try {
       const todayStrLocal = new Date().toISOString().split('T')[0]
-      const [{ data: todosData }, { data: habitsData }, { data: completionsData }] =
+      const [{ data: todosData }, { data: habitsData }, { data: completionsData }, { data: blocksData }] =
         await Promise.all([
           supabase.from('todos').select('*').eq('completed', false).order('due_date', { ascending: true }).limit(5),
           supabase.from('habits').select('*').order('order_index'),
           supabase.from('habit_completions').select('*').eq('completed_date', todayStrLocal),
+          supabase.from('time_blocks').select('*').gte('start_time', todayStrLocal + 'T00:00:00').lt('start_time', todayStrLocal + 'T23:59:59').order('start_time'),
         ])
       setTodos((todosData as Todo[]) || [])
       setHabits((habitsData as Habit[]) || [])
       setCompletions((completionsData as HabitCompletion[]) || [])
+      setTodayBlocks((blocksData as TimeBlock[]) || [])
     } catch (_) {}
   })() }
 
@@ -298,6 +312,34 @@ export default function DailyBrief() {
           </div>
         </div>
       </div>
+
+      {/* Today's Schedule */}
+      {todayBlocks.length > 0 && (
+        <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-blush-100 dark:border-mauve-700">
+            <Clock size={16} className="text-blush-500" />
+            <h3 className="font-semibold text-plum-800 dark:text-mauve-100 text-sm">Today's Schedule</h3>
+            <span className="ml-auto text-xs text-mauve-400">{todayBlocks.length} event{todayBlocks.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="divide-y divide-blush-50 dark:divide-mauve-700/50">
+            {todayBlocks.map(block => (
+              <div key={block.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="w-1 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: block.color }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-plum-800 dark:text-mauve-100 truncate">{block.title}</p>
+                  <p className="text-xs text-mauve-400 mt-0.5">
+                    {fmtTime(block.start_time)} – {fmtTime(block.end_time)}
+                  </p>
+                </div>
+                <span className="text-[11px] px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                  style={{ backgroundColor: block.color + '22', color: block.color }}>
+                  {block.category}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -30,7 +30,9 @@ export default function Layout({ activeView, onNavigate, children }: LayoutProps
           onToggleSidebar={() => setSidebarCollapsed(c => !c)}
         />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-[calc(1rem+60px+env(safe-area-inset-bottom))] md:pb-6">
-          {children}
+          <div key={activeView} className="animate-view-in">
+            {children}
+          </div>
         </main>
       </div>
 
