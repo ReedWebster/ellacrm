@@ -4,13 +4,13 @@ import type { ViewKey } from '@/lib/types'
 
 const VIEW_TITLES: Record<ViewKey, string> = {
   dashboard: 'Daily Brief',
-  calendar: 'Calendar',
-  habits: 'Habits',
-  todos: 'To-Do List',
-  goals: 'Goals',
-  notes: 'Notes',
+  calendar:  'Calendar',
+  habits:    'Habits',
+  todos:     'To-Do List',
+  goals:     'Goals',
+  notes:     'Notes',
   academics: 'Academics',
-  docs: 'Doc Hub',
+  docs:      'Doc Hub',
 }
 
 interface TopNavProps {
@@ -28,36 +28,43 @@ export default function TopNav({ activeView, onToggleSidebar }: TopNavProps) {
   })
 
   return (
-    <header className="h-14 flex items-center gap-4 px-4 bg-white dark:bg-mauve-800 border-b border-blush-100 dark:border-mauve-700 flex-shrink-0">
+    <header className="
+      h-14 flex items-center gap-3 px-4 flex-shrink-0
+      bg-white/90 dark:bg-mauve-900/90 backdrop-blur-xl
+      border-b border-black/[0.06] dark:border-white/[0.05]
+    ">
       <button
         onClick={onToggleSidebar}
-        className="p-1.5 rounded-lg text-mauve-400 hover:text-plum-800 dark:hover:text-mauve-100 hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors"
+        className="p-1.5 rounded-lg text-mauve-400 hover:text-plum-800 dark:hover:text-mauve-100 hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors flex-shrink-0"
         aria-label="Toggle sidebar"
       >
-        <Menu size={18} />
+        <Menu size={17} strokeWidth={1.8} />
       </button>
 
-      <div className="flex-1">
-        <h1 className="font-semibold text-plum-800 dark:text-mauve-100 text-sm sm:text-base">
+      <div className="flex-1 min-w-0">
+        <h1 className="font-semibold text-[15px] text-plum-800 dark:text-white tracking-tight leading-none">
           {VIEW_TITLES[activeView]}
         </h1>
-        <p className="text-xs text-mauve-400 dark:text-mauve-400 hidden sm:block">{today}</p>
+        <p className="text-[11px] text-mauve-400 dark:text-mauve-500 mt-0.5 hidden sm:block">{today}</p>
       </div>
 
-      <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blush-50 dark:bg-mauve-700 border border-blush-100 dark:border-mauve-600 text-sm text-mauve-400">
-        <Search size={14} />
-        <span className="text-xs">Quick search…</span>
+      <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blush-50 dark:bg-mauve-800 border border-black/[0.05] dark:border-white/[0.05] text-mauve-400 cursor-pointer hover:bg-blush-100 dark:hover:bg-mauve-700 transition-colors">
+        <Search size={13} strokeWidth={1.8} />
+        <span className="text-[12px] text-mauve-400">Search…</span>
       </div>
 
       <button
         onClick={toggle}
-        className="p-1.5 rounded-lg text-mauve-400 hover:text-plum-800 dark:hover:text-mauve-100 hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors"
+        className="p-1.5 rounded-lg text-mauve-400 hover:text-plum-800 dark:hover:text-mauve-100 hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors flex-shrink-0"
         aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       >
-        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        {theme === 'dark'
+          ? <Sun size={17} strokeWidth={1.8} />
+          : <Moon size={17} strokeWidth={1.8} />
+        }
       </button>
 
-      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blush-400 to-blush-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 cursor-pointer">
+      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blush-400 to-blush-600 flex items-center justify-center text-white text-[12px] font-semibold flex-shrink-0 cursor-pointer shadow-sm select-none">
         E
       </div>
     </header>

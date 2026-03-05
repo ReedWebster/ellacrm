@@ -4,9 +4,10 @@
 
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
   }
 
   body {
@@ -17,34 +18,48 @@
     @apply bg-mauve-900 text-mauve-100;
   }
 
-  /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-blush-200 dark:bg-mauve-600 rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-blush-300 dark:bg-mauve-500;
-  }
+  /* Minimal scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-blush-200 dark:bg-mauve-600 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-blush-300 dark:bg-mauve-500; }
 }
 
 @layer components {
-  .input-field {
-    @apply w-full px-3 py-2 rounded-xl border border-blush-200 dark:border-mauve-600
-           bg-white dark:bg-mauve-700
-           text-plum-800 dark:text-mauve-100
-           placeholder-mauve-300 dark:placeholder-mauve-500
-           text-sm
-           focus:outline-none focus:ring-2 focus:ring-blush-400 dark:focus:ring-blush-500 focus:border-transparent
-           transition-colors;
+  /* Card — Apple-style: white surface, soft shadow, no heavy border */
+  .card {
+    @apply bg-white dark:bg-mauve-800 rounded-2xl shadow-card
+           border border-black/[0.05] dark:border-white/[0.06];
   }
 
+  /* Input field */
+  .input-field {
+    @apply w-full px-3 py-2 rounded-xl
+           bg-blush-50 dark:bg-mauve-700
+           border border-black/[0.08] dark:border-white/[0.08]
+           text-plum-800 dark:text-mauve-100
+           placeholder-mauve-400 dark:placeholder-mauve-500
+           text-sm
+           focus:outline-none focus:ring-2 focus:ring-blush-400/60 dark:focus:ring-blush-500/50 focus:border-transparent
+           transition-all duration-150;
+  }
+
+  /* Label */
   .field-label {
-    @apply block text-xs font-medium text-mauve-400 dark:text-mauve-400 mb-1.5;
+    @apply block text-[11px] font-semibold uppercase tracking-widest text-mauve-400 dark:text-mauve-400 mb-1.5;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply px-4 py-2 bg-blush-500 hover:bg-blush-600 active:bg-blush-700
+           text-white text-sm font-semibold rounded-xl
+           shadow-sm transition-all duration-150;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply px-4 py-2 text-mauve-500 dark:text-mauve-400
+           hover:bg-black/[0.04] dark:hover:bg-white/[0.06]
+           text-sm font-medium rounded-xl transition-all duration-150;
   }
 }

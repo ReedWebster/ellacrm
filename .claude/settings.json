@@ -10,7 +10,8 @@
       "Bash(\"/Users/reedwebster/Desktop/Ella CRM/src/hooks/useRealtimeSync.ts\":*)",
       "Bash(\"/Users/reedwebster/Desktop/Ella CRM/supabase/schema.sql\":*)",
       "Bash(node --input-type=module --eval \":*)",
-      "Bash(git --version)"
+      "Bash(git --version)",
+      "Bash(chmod +x \"/Users/reedwebster/Desktop/Ella CRM/.git/hooks/post-commit\")"
     ],
     "additionalDirectories": [
       "/Users/reedwebster/Desktop/Ella CRM"
