@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, X, Pin, PinOff, Tag, Search, Trash2, Save } from 'lucide-react'
+import { Plus, X, Pin, PinOff, Tag, Search, Trash2, Save, ChevronLeft } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import type { Note } from '@/lib/types'
@@ -110,10 +110,12 @@ export default function NotesView() {
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
+  const mobileShowEditor = showNew || !!activeNote
+
   return (
-    <div className="flex gap-4 h-[calc(100vh-8rem)]">
-      {/* Sidebar */}
-      <div className="w-72 flex-shrink-0 flex flex-col bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden">
+    <div className="flex gap-4 h-[calc(100dvh-8rem)]">
+      {/* Sidebar / list panel */}
+      <div className={`${mobileShowEditor ? 'hidden md:flex' : 'flex'} w-full md:w-72 flex-shrink-0 flex-col bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden`}>
         {/* Search + New */}
         <div className="p-3 border-b border-blush-100 dark:border-mauve-700 space-y-2">
           <div className="relative">
@@ -128,6 +130,7 @@ export default function NotesView() {
           <button
             onClick={() => { setShowNew(true); setActiveNote(null) }}
             className="w-full flex items-center justify-center gap-2 py-2 bg-blush-500 hover:bg-blush-600 text-white rounded-xl text-sm font-medium transition-colors"
+            aria-label="New note"
           >
             <Plus size={15} />
             New Note
@@ -173,12 +176,17 @@ export default function NotesView() {
       </div>
 
       {/* Editor */}
-      <div className="flex-1 bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden flex flex-col">
+      <div className={`${mobileShowEditor ? 'flex' : 'hidden md:flex'} flex-1 bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden flex-col`}>
         {showNew ? (
           <div className="flex-1 flex flex-col p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-plum-800 dark:text-mauve-100">New Note</h3>
-              <button onClick={() => setShowNew(false)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowNew(false)} className="md:hidden p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400">
+                  <ChevronLeft size={18} />
+                </button>
+                <h3 className="font-semibold text-plum-800 dark:text-mauve-100">New Note</h3>
+              </div>
+              <button onClick={() => setShowNew(false)} className="hidden md:flex p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400">
                 <X size={18} />
               </button>
             </div>
@@ -215,10 +223,13 @@ export default function NotesView() {
           <>
             <div className="flex items-center justify-between px-6 py-4 border-b border-blush-100 dark:border-mauve-700">
               <div className="flex items-center gap-2">
+                <button onClick={() => setActiveNote(null)} className="md:hidden p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400">
+                  <ChevronLeft size={18} />
+                </button>
                 <button onClick={() => togglePin(activeNote)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400 hover:text-blush-500">
                   {activeNote.pinned ? <PinOff size={16} /> : <Pin size={16} />}
                 </button>
-                <span className="text-xs text-mauve-400">
+                <span className="text-xs text-mauve-400 hidden sm:block">
                   Updated {formatDate(activeNote.updated_at)}
                 </span>
               </div>

@@ -35,7 +35,7 @@ export default function TopNav({ activeView, onToggleSidebar }: TopNavProps) {
     ">
       <button
         onClick={onToggleSidebar}
-        className="p-1.5 rounded-lg text-mauve-400 hover:text-plum-800 dark:hover:text-mauve-100 hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors flex-shrink-0"
+        className="hidden md:flex p-1.5 rounded-lg text-mauve-400 hover:text-plum-800 dark:hover:text-mauve-100 hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors flex-shrink-0"
         aria-label="Toggle sidebar"
       >
         <Menu size={17} strokeWidth={1.8} />

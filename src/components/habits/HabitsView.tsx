@@ -155,7 +155,8 @@ export default function HabitsView() {
           <div className="flex-1">
             <span className="text-xs font-semibold text-plum-800 dark:text-mauve-100">Habit</span>
           </div>
-          <div className="flex gap-1 items-center mr-12">
+          {/* Desktop: 7-day column headers */}
+          <div className="hidden md:flex gap-1 items-center mr-12">
             {last7.map((day, i) => (
               <div
                 key={i}
@@ -168,6 +169,8 @@ export default function HabitsView() {
               </div>
             ))}
           </div>
+          {/* Mobile: just "Today" label */}
+          <span className="md:hidden text-xs font-medium text-mauve-400 mr-3">Today</span>
           <span className="text-xs font-medium text-mauve-400 w-12 text-center">Streak</span>
         </div>
 
@@ -185,8 +188,8 @@ export default function HabitsView() {
                 key={habit.id}
                 className="flex items-center px-5 py-3 border-b border-blush-50 dark:border-mauve-700/50 last:border-0 hover:bg-blush-50/50 dark:hover:bg-mauve-700/30 group"
               >
-                {/* Drag handle (visual) */}
-                <GripVertical size={14} className="text-mauve-300 dark:text-mauve-600 mr-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                {/* Drag handle — desktop only */}
+                <GripVertical size={14} className="hidden md:block text-mauve-300 dark:text-mauve-600 mr-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
 
                 {/* Habit info */}
                 <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -194,8 +197,8 @@ export default function HabitsView() {
                   <span className="text-sm font-medium text-plum-800 dark:text-mauve-100 truncate">{habit.name}</span>
                 </div>
 
-                {/* 7-day checkboxes */}
-                <div className="flex gap-1 items-center mr-3">
+                {/* Desktop: 7-day checkboxes */}
+                <div className="hidden md:flex gap-1 items-center mr-3">
                   {last7.map((day, i) => {
                     const ds = dateStr(day)
                     const done = completions.some(c => c.habit_id === habit.id && c.completed_date === ds)
@@ -218,6 +221,21 @@ export default function HabitsView() {
                   })}
                 </div>
 
+                {/* Mobile: today only */}
+                {(() => {
+                  const done = completions.some(c => c.habit_id === habit.id && c.completed_date === todayStr)
+                  return (
+                    <button
+                      onClick={() => toggleDay(habit.id, todayStr)}
+                      className={`md:hidden w-8 h-8 rounded-full flex items-center justify-center mr-3 transition-all duration-150 ${
+                        done ? 'bg-blush-500 text-white' : 'border-2 border-blush-300 dark:border-blush-700 text-mauve-300'
+                      }`}
+                    >
+                      {done ? <CheckCircle2 size={16} /> : <Circle size={14} />}
+                    </button>
+                  )
+                })()}
+
                 {/* Streak */}
                 <div className="w-12 flex items-center justify-center gap-1">
                   {streak > 0 && <Flame size={12} className="text-orange-400" />}
@@ -226,8 +244,8 @@ export default function HabitsView() {
                   </span>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Actions — desktop hover, mobile always visible */}
+                <div className="flex items-center gap-1 ml-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button onClick={() => openEdit(habit)} className="p-1 rounded hover:bg-blush-100 dark:hover:bg-mauve-600 text-mauve-400">
                     <Pencil size={12} />
                   </button>

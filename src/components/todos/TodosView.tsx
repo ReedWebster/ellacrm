@@ -116,14 +116,14 @@ export default function TodosView() {
       </div>
 
       {/* Filter + Add */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 bg-white dark:bg-mauve-800 rounded-xl border border-blush-100 dark:border-mauve-700 p-1">
-          <Filter size={12} className="text-mauve-400 ml-2" />
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="flex items-center gap-1.5 bg-white dark:bg-mauve-800 rounded-xl border border-blush-100 dark:border-mauve-700 p-1 overflow-x-auto flex-1 min-w-0">
+          <Filter size={12} className="text-mauve-400 ml-2 flex-shrink-0" />
           {(['pending', 'all', 'high', 'medium', 'low', 'completed'] as FilterType[]).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium capitalize transition-colors ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium capitalize transition-colors flex-shrink-0 ${
                 filter === f
                   ? 'bg-blush-500 text-white'
                   : 'text-mauve-400 hover:text-plum-800 dark:hover:text-mauve-100 hover:bg-blush-50 dark:hover:bg-mauve-700'
@@ -135,7 +135,7 @@ export default function TodosView() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-3 py-2 bg-blush-500 hover:bg-blush-600 text-white rounded-xl text-sm font-medium transition-colors flex-shrink-0"
+          className="flex items-center justify-center gap-2 px-3 py-2 bg-blush-500 hover:bg-blush-600 text-white rounded-xl text-sm font-medium transition-colors flex-shrink-0"
         >
           <Plus size={15} />
           Add Task

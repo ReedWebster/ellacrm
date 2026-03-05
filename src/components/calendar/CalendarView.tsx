@@ -82,7 +82,7 @@ interface DragPreview { date: Date; startMin: number; endMin: number }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function CalendarView() {
-  const [mode, setMode]               = useState<CalMode>('week')
+  const [mode, setMode]               = useState<CalMode>(() => window.innerWidth < 768 ? 'day' : 'week')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [blocks, setBlocks]           = useState<TimeBlock[]>([])
   const [showForm, setShowForm]       = useState(false)
@@ -483,9 +483,9 @@ export default function CalendarView() {
 
   // ── Shell ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col h-[calc(100dvh-8rem)]">
       {/* Toolbar — Apple Calendar layout */}
-      <div className="flex items-center gap-1.5 mb-3 flex-shrink-0">
+      <div className="flex items-center gap-1.5 mb-3 flex-shrink-0 flex-wrap">
         {/* Add button */}
         <button
           onClick={() => { setForm(defaultForm); setShowForm(true) }}

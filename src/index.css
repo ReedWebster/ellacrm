@@ -23,6 +23,10 @@
   ::-webkit-scrollbar-track { @apply bg-transparent; }
   ::-webkit-scrollbar-thumb { @apply bg-blush-200 dark:bg-mauve-600 rounded-full; }
   ::-webkit-scrollbar-thumb:hover { @apply bg-blush-300 dark:bg-mauve-500; }
+
+  /* Mobile touch polish */
+  * { -webkit-tap-highlight-color: transparent; }
+  .overflow-y-auto, .overflow-x-auto { -webkit-overflow-scrolling: touch; }
 }
 
 @layer components {
