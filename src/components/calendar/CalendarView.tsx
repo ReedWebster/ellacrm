@@ -17,10 +17,11 @@ const CATEGORIES = [
   { label: 'Social',   color: '#f2abc4' },
 ]
 
-const HOURS = Array.from({ length: 18 }, (_, i) => i + 6) // 6 AM – 11 PM
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const HOURS       = Array.from({ length: 24 }, (_, i) => i) // 0–23
+const CELL_H      = 56   // px per hour — matches Apple Calendar density
+const DAY_LABELS  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-// ─── Pure helpers ─────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r }
 function startOfWeek(d: Date) { const r = new Date(d); r.setDate(r.getDate() - r.getDay()); r.setHours(0,0,0,0); return r }
 function startOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1) }
@@ -30,16 +31,23 @@ function isSameMonth(a: Date, b: Date) { return a.getMonth() === b.getMonth() &&
 function dateStr(d: Date) { return d.toISOString().split('T')[0] }
 function pad(n: number) { return String(n).padStart(2, '0') }
 
+/** Apple Calendar-style time label: "12 AM", "1", "2", ..., "12 PM", "1", ... */
+function hourLabel(h: number): string {
+  if (h === 0)  return '12 AM'
+  if (h === 12) return '12 PM'
+  return String(h < 12 ? h : h - 12)
+}
+
 function formatTime(h: number, m: number): string {
   const ampm = h >= 12 ? 'PM' : 'AM'
-  const dh = h > 12 ? h - 12 : h === 0 ? 12 : h
+  const dh   = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${dh}:${pad(m)} ${ampm}`
 }
 
+/** Convert pixel offset from column top → minutes from midnight, snapped to 15 min */
 function pxToMin(py: number): number {
-  // Grid top = 6 AM = 360 min. Each px = 1 min.
-  const raw = Math.round((py + 360) / 15) * 15
-  return Math.max(6 * 60, Math.min(raw, 23 * 60))
+  const raw = Math.round(py / CELL_H * 60 / 15) * 15
+  return Math.max(0, Math.min(raw, 23 * 60 + 45))
 }
 
 function buildMonthGrid(date: Date): Date[] {
@@ -47,38 +55,34 @@ function buildMonthGrid(date: Date): Date[] {
   return Array.from({ length: 42 }, (_, i) => addDays(addDays(s, -s.getDay()), i))
 }
 
-// 15-min time slots from 6:00 AM to 11:45 PM
+// 15-min time slots 12 AM – 11:45 PM
 const TIME_SLOTS = (() => {
-  const slots: { h: number; m: number; value: number; label: string }[] = []
-  for (let mins = 6 * 60; mins <= 23 * 60 + 45; mins += 15) {
-    const h = Math.floor(mins / 60)
-    const m = mins % 60
-    slots.push({ h, m, value: mins, label: formatTime(h, m) })
+  const slots: { value: number; label: string }[] = []
+  for (let m = 0; m <= 23 * 60 + 45; m += 15) {
+    slots.push({ value: m, label: formatTime(Math.floor(m / 60), m % 60) })
   }
   return slots
 })()
 
-// ─── Form type ────────────────────────────────────────────────────────────────
+// ─── Form ─────────────────────────────────────────────────────────────────────
 interface BlockForm {
   title: string; category: string; date: string
   startHour: number; startMin: number; endHour: number; endMin: number
   repeatUntil: string
 }
-
-const eoyDate = new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
+const eoyDate    = new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
 const defaultForm: BlockForm = {
-  title: '', category: 'Work', date: new Date().toISOString().split('T')[0],
-  startHour: 9, startMin: 0, endHour: 10, endMin: 0,
-  repeatUntil: eoyDate,
+  title: '', category: 'Work', date: dateStr(new Date()),
+  startHour: 9, startMin: 0, endHour: 10, endMin: 0, repeatUntil: eoyDate,
 }
 
-// ─── Drag state ───────────────────────────────────────────────────────────────
-interface DragRef { date: Date; colEl: HTMLElement; anchorMin: number }
+// ─── Drag ─────────────────────────────────────────────────────────────────────
+interface DragRef     { date: Date; colEl: HTMLElement; anchorMin: number }
 interface DragPreview { date: Date; startMin: number; endMin: number }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function CalendarView() {
-  const [mode, setMode]               = useState<CalMode>('month')
+  const [mode, setMode]               = useState<CalMode>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [blocks, setBlocks]           = useState<TimeBlock[]>([])
   const [showForm, setShowForm]       = useState(false)
@@ -88,8 +92,18 @@ export default function CalendarView() {
 
   const dragRef        = useRef<DragRef | null>(null)
   const dragPreviewRef = useRef<DragPreview | null>(null)
+  const scrollRef      = useRef<HTMLDivElement>(null)
 
-  const today = new Date(); today.setHours(0,0,0,0)
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+
+  // ── Auto-scroll to current time in week/day ────────────────────────────────
+  useEffect(() => {
+    if ((mode === 'week' || mode === 'day') && scrollRef.current) {
+      const now  = new Date()
+      const top  = Math.max(0, (now.getHours() - 1.5) * CELL_H)
+      scrollRef.current.scrollTop = top
+    }
+  }, [mode])
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const loadBlocks = useCallback(async () => {
@@ -102,11 +116,10 @@ export default function CalendarView() {
         const ws = startOfWeek(currentDate)
         from = ws.toISOString(); to = addDays(ws, 7).toISOString()
       } else {
-        const ds = new Date(currentDate); ds.setHours(0,0,0,0)
+        const ds = new Date(currentDate); ds.setHours(0, 0, 0, 0)
         from = ds.toISOString(); to = addDays(ds, 1).toISOString()
       }
-      const { data } = await supabase
-        .from('time_blocks').select('*')
+      const { data } = await supabase.from('time_blocks').select('*')
         .gte('start_time', from).lt('start_time', to).order('start_time')
       setBlocks((data as TimeBlock[]) || [])
     } catch (_) {}
@@ -115,23 +128,23 @@ export default function CalendarView() {
   useEffect(() => { loadBlocks() }, [loadBlocks])
   useRealtimeSync('time_blocks', loadBlocks)
 
-  // ── Global drag handlers ──────────────────────────────────────────────────
+  // ── Global drag ────────────────────────────────────────────────────────────
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!dragRef.current) return
       const { colEl, date, anchorMin } = dragRef.current
-      const rect = colEl.getBoundingClientRect()
+      const rect   = colEl.getBoundingClientRect()
       const curMin = pxToMin(e.clientY - rect.top)
-      const s  = Math.min(anchorMin, curMin)
-      const en = Math.max(anchorMin, curMin) + 15
-      const preview = { date, startMin: s, endMin: Math.min(en, 23 * 60 + 45) }
+      const s      = Math.min(anchorMin, curMin)
+      const en     = Math.max(anchorMin, curMin) + 15
+      const preview: DragPreview = { date, startMin: s, endMin: Math.min(en, 23 * 60 + 45) }
       dragPreviewRef.current = preview
       setDragPreview(preview)
     }
     function onUp() {
       if (!dragRef.current) return
       const preview = dragPreviewRef.current
-      dragRef.current = null
+      dragRef.current      = null
       dragPreviewRef.current = null
       setDragPreview(null)
       if (preview && preview.endMin > preview.startMin) {
@@ -148,13 +161,10 @@ export default function CalendarView() {
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup',   onUp)
-    return () => {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup',   onUp)
-    }
+    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
   }, [])
 
-  // ── Navigation ────────────────────────────────────────────────────────────
+  // ── Navigate ───────────────────────────────────────────────────────────────
   const navigate = (dir: number) => {
     const d = new Date(currentDate)
     if (mode === 'month') d.setMonth(d.getMonth() + dir)
@@ -174,7 +184,7 @@ export default function CalendarView() {
     return currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   }
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // ── Save ───────────────────────────────────────────────────────────────────
   async function saveBlock() {
     if (!form.title.trim()) return
     setSaving(true)
@@ -206,50 +216,64 @@ export default function CalendarView() {
     const grid = buildMonthGrid(currentDate)
     return (
       <div className="flex flex-col flex-1 min-h-0">
-        <div className="grid grid-cols-7 border-b border-black/[0.05] dark:border-white/[0.05] flex-shrink-0">
-          {DAY_LABELS.map(d => (
-            <div key={d} className="py-2 text-center text-[10px] font-semibold text-mauve-400 uppercase tracking-widest">
-              {d}
+        {/* Day-of-week header */}
+        <div className="grid grid-cols-7 border-b border-black/[0.06] dark:border-white/[0.05]">
+          {DAY_LABELS.map((d, i) => (
+            <div
+              key={d}
+              className={`py-2 text-center text-[11px] font-medium tracking-wide select-none
+                ${i === 0 || i === 6 ? 'text-mauve-400' : 'text-mauve-400'}`}
+            >
+              {d.toUpperCase()}
             </div>
           ))}
         </div>
+        {/* Grid cells */}
         <div className="grid grid-cols-7 flex-1 min-h-0" style={{ gridTemplateRows: 'repeat(6, 1fr)' }}>
           {grid.map((day, i) => {
-            const isToday = isSameDay(day, today)
+            const isToday        = isSameDay(day, today)
             const isCurrentMonth = isSameMonth(day, currentDate)
-            const dayBlocks = blocksForDay(day)
+            const isWeekend      = day.getDay() === 0 || day.getDay() === 6
+            const dayBlocks      = blocksForDay(day)
             return (
               <div
                 key={i}
-                className={`
-                  border-b border-r border-black/[0.04] dark:border-white/[0.04]
-                  p-1 cursor-pointer transition-colors overflow-hidden
-                  hover:bg-blush-50/80 dark:hover:bg-mauve-700/20
-                  ${!isCurrentMonth ? 'opacity-40' : ''}
-                `}
                 onClick={() => { setCurrentDate(day); setMode('day') }}
+                className={`
+                  relative border-b border-r border-black/[0.05] dark:border-white/[0.04]
+                  cursor-pointer overflow-hidden transition-colors
+                  hover:bg-blush-50/60 dark:hover:bg-white/[0.02]
+                  ${isWeekend && isCurrentMonth ? 'bg-black/[0.012] dark:bg-white/[0.015]' : ''}
+                  ${!isCurrentMonth ? 'bg-transparent' : ''}
+                `}
               >
-                <div className="flex justify-center mb-1">
+                {/* Day number — top right, Apple-style */}
+                <div className="flex justify-center pt-1 pb-0.5">
                   <span className={`
-                    w-6 h-6 text-[13px] font-medium flex items-center justify-center rounded-full select-none transition-colors
-                    ${isToday ? 'bg-blush-500 text-white font-semibold' : 'text-plum-800 dark:text-mauve-100'}
+                    w-7 h-7 flex items-center justify-center rounded-full text-[13px] select-none transition-colors
+                    ${isToday
+                      ? 'bg-blush-500 text-white font-semibold'
+                      : isCurrentMonth
+                        ? 'text-plum-800 dark:text-mauve-100 font-normal'
+                        : 'text-mauve-300 dark:text-mauve-600 font-normal'}
                   `}>
                     {day.getDate()}
                   </span>
                 </div>
-                <div className="space-y-0.5">
+                {/* Events */}
+                <div className="px-1 space-y-0.5 pb-1">
                   {dayBlocks.slice(0, 3).map(b => (
                     <div
                       key={b.id}
-                      className="px-1.5 py-0.5 rounded-full text-white text-[10px] leading-tight truncate font-medium"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-white text-[11px] leading-tight truncate"
                       style={{ backgroundColor: b.color }}
                       onClick={e => e.stopPropagation()}
                     >
-                      {b.title}
+                      <span className="truncate font-medium">{b.title}</span>
                     </div>
                   ))}
                   {dayBlocks.length > 3 && (
-                    <p className="text-[10px] text-mauve-400 pl-1 font-medium">+{dayBlocks.length - 3}</p>
+                    <p className="text-[10px] text-mauve-400 pl-1.5">+{dayBlocks.length - 3} more</p>
                   )}
                 </div>
               </div>
@@ -260,33 +284,42 @@ export default function CalendarView() {
     )
   }
 
-  // ── Week / Day time grid ──────────────────────────────────────────────────
+  // ── Time grid (shared week/day) ────────────────────────────────────────────
   const renderTimeGrid = (days: Date[]) => {
-    const now = new Date()
-    const nowTop = (now.getHours() - 6) * 60 + now.getMinutes()
+    const now        = new Date()
+    const nowMinutes = now.getHours() * 60 + now.getMinutes()
+    const nowTop     = nowMinutes / 60 * CELL_H
     const isCurrentPeriod = days.some(d => isSameDay(d, today))
-    const colCount = days.length
+    const colCount   = days.length
 
     return (
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        {/* Day headers */}
+        {/* ── Column headers ── */}
         <div
-          className="flex-shrink-0 border-b border-black/[0.05] dark:border-white/[0.05]"
-          style={{ display: 'grid', gridTemplateColumns: `56px repeat(${colCount}, 1fr)` }}
+          className="flex-shrink-0 border-b border-black/[0.06] dark:border-white/[0.05] bg-white dark:bg-mauve-800"
+          style={{ display: 'grid', gridTemplateColumns: `52px repeat(${colCount}, 1fr)` }}
         >
-          <div />
+          {/* Time-column spacer */}
+          <div className="border-r border-black/[0.05] dark:border-white/[0.04]" />
           {days.map((day, i) => {
-            const isToday = isSameDay(day, today)
+            const isToday   = isSameDay(day, today)
+            const isWeekend = day.getDay() === 0 || day.getDay() === 6
             return (
-              <div key={i} className="py-3 text-center border-l border-black/[0.05] dark:border-white/[0.05]">
-                <p className="text-[10px] text-mauve-400 uppercase font-semibold tracking-wider">
+              <div
+                key={i}
+                className={`py-2 text-center border-r border-black/[0.05] dark:border-white/[0.04] last:border-r-0
+                  ${isWeekend ? 'bg-black/[0.01] dark:bg-white/[0.01]' : ''}`}
+              >
+                <p className={`text-[11px] font-medium tracking-wide uppercase mb-0.5
+                  ${isToday ? 'text-blush-500' : 'text-mauve-400'}`}>
                   {day.toLocaleDateString('en-US', { weekday: 'short' })}
                 </p>
                 <div
                   className={`
-                    text-xl font-light w-9 h-9 mx-auto mt-1 flex items-center justify-center rounded-full cursor-pointer transition-colors
+                    w-9 h-9 mx-auto flex items-center justify-center rounded-full
+                    text-[22px] font-light leading-none cursor-pointer transition-colors
                     ${isToday
-                      ? 'bg-blush-500 text-white font-semibold text-base'
+                      ? 'bg-blush-500 text-white font-semibold text-[18px]'
                       : 'text-plum-800 dark:text-mauve-100 hover:bg-blush-50 dark:hover:bg-mauve-700'}
                   `}
                   onClick={() => { setCurrentDate(day); setMode('day') }}
@@ -298,102 +331,140 @@ export default function CalendarView() {
           })}
         </div>
 
-        {/* Scrollable time grid */}
-        <div className="flex-1 overflow-y-auto">
+        {/* ── All-day row ── */}
+        <div
+          className="flex-shrink-0 border-b border-black/[0.06] dark:border-white/[0.05] bg-white dark:bg-mauve-800"
+          style={{ display: 'grid', gridTemplateColumns: `52px repeat(${colCount}, 1fr)` }}
+        >
+          <div className="border-r border-black/[0.05] dark:border-white/[0.04] flex items-center justify-end pr-2 py-1">
+            <span className="text-[9px] text-mauve-400 uppercase tracking-wide select-none">all-day</span>
+          </div>
+          {days.map((_, i) => (
+            <div key={i} className="min-h-[22px] border-r border-black/[0.05] dark:border-white/[0.04] last:border-r-0" />
+          ))}
+        </div>
+
+        {/* ── Scrollable time grid ── */}
+        <div className="flex-1 overflow-y-auto" ref={scrollRef}>
           <div
-            className={dragPreview ? 'cursor-ns-resize select-none' : ''}
-            style={{ display: 'grid', gridTemplateColumns: `56px repeat(${colCount}, 1fr)`, height: `${HOURS.length * 60}px`, position: 'relative' }}
+            className={dragPreview ? 'select-none' : ''}
+            style={{ display: 'grid', gridTemplateColumns: `52px repeat(${colCount}, 1fr)`, height: `${HOURS.length * CELL_H}px`, position: 'relative' }}
           >
             {/* Hour labels */}
-            <div>
+            <div className="border-r border-black/[0.05] dark:border-white/[0.04]">
               {HOURS.map(h => (
-                <div key={h} className="flex items-start justify-end pr-3 pt-1" style={{ height: '60px' }}>
-                  <span className="text-[10px] text-mauve-400 select-none whitespace-nowrap">{formatTime(h, 0)}</span>
+                <div key={h} className="flex items-start justify-end pr-2" style={{ height: `${CELL_H}px` }}>
+                  {h > 0 && (
+                    <span className="text-[11px] text-mauve-400 select-none -mt-2.5 tabular-nums">
+                      {hourLabel(h)}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
 
             {/* Day columns */}
             {days.map((day, di) => {
-              const isToday = isSameDay(day, today)
+              const isToday   = isSameDay(day, today)
+              const isWeekend = day.getDay() === 0 || day.getDay() === 6
               const dayBlocks = blocksForDay(day)
-              const preview = dragPreview && isSameDay(dragPreview.date, day) ? dragPreview : null
+              const preview   = dragPreview && isSameDay(dragPreview.date, day) ? dragPreview : null
 
               return (
                 <div
                   key={di}
-                  className={`relative border-l border-black/[0.05] dark:border-white/[0.05] cursor-crosshair select-none ${isToday ? 'bg-blush-50/40 dark:bg-blush-900/10' : ''}`}
-                  style={{ height: `${HOURS.length * 60}px` }}
+                  className={`relative border-r border-black/[0.05] dark:border-white/[0.04] last:border-r-0 cursor-crosshair select-none
+                    ${isToday   ? 'bg-blush-50/30 dark:bg-blush-900/10' : ''}
+                    ${isWeekend && !isToday ? 'bg-black/[0.012] dark:bg-white/[0.01]' : ''}
+                  `}
+                  style={{ height: `${HOURS.length * CELL_H}px` }}
                   onMouseDown={e => {
                     if ((e.target as HTMLElement).closest('[data-event]')) return
                     e.preventDefault()
-                    const rect = e.currentTarget.getBoundingClientRect()
+                    const rect      = e.currentTarget.getBoundingClientRect()
                     const anchorMin = pxToMin(e.clientY - rect.top)
                     dragRef.current = { date: day, colEl: e.currentTarget, anchorMin }
-                    const preview = { date: day, startMin: anchorMin, endMin: anchorMin + 15 }
-                    dragPreviewRef.current = preview
-                    setDragPreview(preview)
+                    const p: DragPreview = { date: day, startMin: anchorMin, endMin: anchorMin + 15 }
+                    dragPreviewRef.current = p
+                    setDragPreview(p)
                   }}
                 >
                   {/* Hour lines */}
                   {HOURS.map(h => (
-                    <div key={h} className="absolute w-full border-t border-black/[0.05] dark:border-white/[0.04]" style={{ top: `${(h-6)*60}px` }} />
+                    <div
+                      key={h}
+                      className="absolute w-full border-t border-black/[0.06] dark:border-white/[0.04]"
+                      style={{ top: `${h * CELL_H}px` }}
+                    />
                   ))}
-                  {/* Half-hour dashes */}
+                  {/* Half-hour lines */}
                   {HOURS.map(h => (
-                    <div key={`d${h}`} className="absolute w-full border-t border-dashed border-black/[0.03] dark:border-white/[0.03]" style={{ top: `${(h-6)*60+30}px` }} />
+                    <div
+                      key={`h${h}`}
+                      className="absolute w-full border-t border-black/[0.03] dark:border-white/[0.025]"
+                      style={{ top: `${h * CELL_H + CELL_H / 2}px` }}
+                    />
                   ))}
 
                   {/* Current time indicator */}
-                  {isToday && isCurrentPeriod && nowTop >= 0 && nowTop <= HOURS.length * 60 && (
-                    <div className="absolute w-full z-20 pointer-events-none flex items-center" style={{ top: `${nowTop}px` }}>
-                      <div className="w-2.5 h-2.5 rounded-full bg-blush-500 shadow-sm flex-shrink-0" style={{ marginLeft: '-5px' }} />
-                      <div className="flex-1 h-px bg-blush-500" />
+                  {isToday && isCurrentPeriod && (
+                    <div
+                      className="absolute w-full z-20 pointer-events-none flex items-center"
+                      style={{ top: `${nowTop}px` }}
+                    >
+                      <div
+                        className="w-2.5 h-2.5 rounded-full bg-blush-500 flex-shrink-0 shadow-sm"
+                        style={{ marginLeft: '-4px' }}
+                      />
+                      <div className="flex-1 h-[1.5px] bg-blush-500" />
                     </div>
                   )}
 
-                  {/* Drag preview ghost */}
+                  {/* Drag ghost */}
                   {preview && (
                     <div
                       className="absolute left-0.5 right-0.5 rounded-lg pointer-events-none z-10 border border-blush-400"
                       style={{
-                        top: `${preview.startMin - 360}px`,
-                        height: `${Math.max(preview.endMin - preview.startMin, 15)}px`,
-                        backgroundColor: 'rgba(222, 102, 144, 0.18)',
+                        top:    `${preview.startMin / 60 * CELL_H}px`,
+                        height: `${Math.max((preview.endMin - preview.startMin) / 60 * CELL_H, 15)}px`,
+                        backgroundColor: 'rgba(222, 102, 144, 0.15)',
                       }}
                     >
                       <span className="text-[10px] font-semibold text-blush-600 dark:text-blush-300 px-1.5 pt-0.5 block leading-tight">
-                        {formatTime(Math.floor(preview.startMin/60), preview.startMin%60)}
+                        {formatTime(Math.floor(preview.startMin / 60), preview.startMin % 60)}
                         {' – '}
-                        {formatTime(Math.floor(preview.endMin/60), preview.endMin%60)}
+                        {formatTime(Math.floor(preview.endMin / 60), preview.endMin % 60)}
                       </span>
                     </div>
                   )}
 
                   {/* Events */}
                   {dayBlocks.map(block => {
-                    const st = new Date(block.start_time)
-                    const et = new Date(block.end_time)
-                    const top    = (st.getHours() - 6) * 60 + st.getMinutes()
-                    const height = Math.max((et.getHours() - st.getHours()) * 60 + (et.getMinutes() - st.getMinutes()), 20)
+                    const st     = new Date(block.start_time)
+                    const et     = new Date(block.end_time)
+                    const topPx  = (st.getHours() * 60 + st.getMinutes()) / 60 * CELL_H
+                    const durMin = (et.getTime() - st.getTime()) / 60000
+                    const hPx    = Math.max(durMin / 60 * CELL_H, 22)
                     return (
                       <div
                         key={block.id}
                         data-event="1"
-                        className="absolute left-0.5 right-0.5 rounded-xl px-2 py-1 text-white overflow-hidden cursor-pointer group shadow-sm"
-                        style={{ top: `${top}px`, height: `${height}px`, backgroundColor: block.color, zIndex: 5 }}
+                        className="absolute left-px right-px rounded-xl overflow-hidden cursor-pointer group"
+                        style={{ top: `${topPx + 1}px`, height: `${hPx - 2}px`, backgroundColor: block.color, zIndex: 5 }}
                       >
-                        <p className="text-[11px] font-semibold leading-tight truncate">{block.title}</p>
-                        {height > 28 && (
-                          <p className="text-[10px] opacity-75 mt-0.5">
-                            {st.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                          </p>
-                        )}
+                        <div className="px-2 py-1 h-full flex flex-col justify-start">
+                          <p className="text-[11px] font-semibold text-white leading-tight truncate">{block.title}</p>
+                          {hPx > 30 && (
+                            <p className="text-[10px] text-white/75 leading-tight mt-0.5">
+                              {formatTime(st.getHours(), st.getMinutes())} – {formatTime(et.getHours(), et.getMinutes())}
+                            </p>
+                          )}
+                        </div>
                         <button
                           onClick={e => { e.stopPropagation(); deleteBlock(block.id) }}
-                          className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 bg-black/20 rounded-lg p-0.5 transition-opacity"
+                          className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 bg-black/25 rounded-md p-0.5 transition-opacity"
                         >
-                          <X size={10} />
+                          <X size={10} className="text-white" />
                         </button>
                       </div>
                     )
@@ -410,31 +481,44 @@ export default function CalendarView() {
   const renderWeek = () => renderTimeGrid(Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(currentDate), i)))
   const renderDay  = () => { const d = new Date(currentDate); d.setHours(0,0,0,0); return renderTimeGrid([d]) }
 
-  // ── Shell ─────────────────────────────────────────────────────────────────
+  // ── Shell ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 mb-3 flex-shrink-0">
+      {/* Toolbar — Apple Calendar layout */}
+      <div className="flex items-center gap-1.5 mb-3 flex-shrink-0">
+        {/* Add button */}
+        <button
+          onClick={() => { setForm(defaultForm); setShowForm(true) }}
+          className="w-7 h-7 flex items-center justify-center bg-blush-500 hover:bg-blush-600 text-white rounded-full shadow-sm transition-colors mr-1"
+          title="New event"
+        >
+          <Plus size={15} strokeWidth={2.5} />
+        </button>
+
+        {/* Today */}
         <button
           onClick={() => setCurrentDate(new Date())}
           className="px-3 py-1.5 text-[12px] font-medium rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-mauve-500 dark:text-mauve-400 hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors"
         >
           Today
         </button>
-        <div className="flex items-center">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-blush-100 dark:hover:bg-mauve-700 text-mauve-400 transition-colors">
-            <ChevronLeft size={16} strokeWidth={2} />
-          </button>
-          <button onClick={() => navigate(1)} className="p-1.5 rounded-lg hover:bg-blush-100 dark:hover:bg-mauve-700 text-mauve-400 transition-colors">
-            <ChevronRight size={16} strokeWidth={2} />
-          </button>
-        </div>
 
-        <h2 className="font-semibold text-[16px] text-plum-800 dark:text-mauve-100 flex-1 ml-1 tracking-tight">{getTitle()}</h2>
+        {/* Prev / Next */}
+        <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-blush-100 dark:hover:bg-mauve-700 text-mauve-400 transition-colors">
+          <ChevronLeft size={16} strokeWidth={2} />
+        </button>
+        <button onClick={() => navigate(1)} className="p-1.5 rounded-lg hover:bg-blush-100 dark:hover:bg-mauve-700 text-mauve-400 transition-colors">
+          <ChevronRight size={16} strokeWidth={2} />
+        </button>
+
+        {/* Title */}
+        <h2 className="font-semibold text-[16px] text-plum-800 dark:text-mauve-100 flex-1 ml-1 tracking-tight">
+          {getTitle()}
+        </h2>
 
         {/* Segmented control */}
         <div className="flex rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] text-[12px] font-medium bg-white dark:bg-mauve-800">
-          {(['month', 'week', 'day'] as CalMode[]).map(m => (
+          {(['day', 'week', 'month'] as CalMode[]).map(m => (
             <button
               key={m}
               onClick={() => setMode(m)}
@@ -448,13 +532,6 @@ export default function CalendarView() {
             </button>
           ))}
         </div>
-
-        <button
-          onClick={() => { setForm(defaultForm); setShowForm(true) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blush-500 hover:bg-blush-600 text-white rounded-xl text-[12px] font-semibold transition-colors shadow-sm"
-        >
-          <Plus size={13} strokeWidth={2.5} /> Add
-        </button>
       </div>
 
       {/* Calendar body */}
@@ -498,7 +575,7 @@ export default function CalendarView() {
                     className="input-field"
                     value={form.startHour * 60 + form.startMin}
                     onChange={e => {
-                      const val = +e.target.value
+                      const val    = +e.target.value
                       const endVal = form.endHour * 60 + form.endMin
                       setForm(f => ({
                         ...f,
