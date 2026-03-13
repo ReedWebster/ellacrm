@@ -122,8 +122,10 @@ create table if not exists time_blocks (
   end_time     timestamptz not null,
   color        text default '#e8829a',
   repeat_until date,
+  repeat_id    uuid,
   created_at   timestamptz default now()
 );
+-- Run this if you already have the table: alter table time_blocks add column if not exists repeat_id uuid;
 
 -- ─── Row Level Security (RLS) — single-user app, use anon key ───────────────
 -- These policies allow full access via the anon key (fine for single-user app).

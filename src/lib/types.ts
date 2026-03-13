@@ -139,6 +139,7 @@ export interface TimeBlock {
   end_time: string
   color: string
   repeat_until?: string
+  repeat_id?: string
   created_at: string
 }
 

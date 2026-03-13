@@ -17,8 +17,16 @@ const CATEGORIES = [
   { label: 'Social',   color: '#f2abc4' },
 ]
 
-const HOURS       = Array.from({ length: 24 }, (_, i) => i) // 0–23
-const CELL_H      = 56   // px per hour — matches Apple Calendar density
+const REPEAT_OPTIONS = [
+  { value: 'none',     label: 'Does not repeat' },
+  { value: 'daily',    label: 'Every day' },
+  { value: 'weekly',   label: 'Every week' },
+  { value: 'weekdays', label: 'Every weekday (Mon–Fri)' },
+  { value: 'weekends', label: 'Every weekend (Sat–Sun)' },
+]
+
+const HOURS       = Array.from({ length: 24 }, (_, i) => i)
+const CELL_H      = 56
 const DAY_LABELS  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -31,7 +39,6 @@ function isSameMonth(a: Date, b: Date) { return a.getMonth() === b.getMonth() &&
 function dateStr(d: Date) { return d.toISOString().split('T')[0] }
 function pad(n: number) { return String(n).padStart(2, '0') }
 
-/** Apple Calendar-style time label: "12 AM", "1", "2", ..., "12 PM", "1", ... */
 function hourLabel(h: number): string {
   if (h === 0)  return '12 AM'
   if (h === 12) return '12 PM'
@@ -44,7 +51,6 @@ function formatTime(h: number, m: number): string {
   return `${dh}:${pad(m)} ${ampm}`
 }
 
-/** Convert pixel offset from column top → minutes from midnight, snapped to 15 min */
 function pxToMin(py: number): number {
   const raw = Math.round(py / CELL_H * 60 / 15) * 15
   return Math.max(0, Math.min(raw, 23 * 60 + 45))
@@ -55,7 +61,6 @@ function buildMonthGrid(date: Date): Date[] {
   return Array.from({ length: 42 }, (_, i) => addDays(addDays(s, -s.getDay()), i))
 }
 
-// 15-min time slots 12 AM – 11:45 PM
 const TIME_SLOTS = (() => {
   const slots: { value: number; label: string }[] = []
   for (let m = 0; m <= 23 * 60 + 45; m += 15) {
@@ -64,21 +69,48 @@ const TIME_SLOTS = (() => {
   return slots
 })()
 
+/** Returns all dates for a repeat series starting at `startDate` up to `until`. */
+function getRepeatDates(startDate: string, until: string, freq: string): Date[] {
+  if (freq === 'none') return [new Date(startDate)]
+  const start = new Date(startDate)
+  const end   = new Date(until)
+  const dates: Date[] = []
+  let cur = new Date(start)
+  while (cur <= end) {
+    const dow = cur.getDay()
+    if (
+      freq === 'daily' ||
+      freq === 'weekly' ||
+      (freq === 'weekdays' && dow >= 1 && dow <= 5) ||
+      (freq === 'weekends' && (dow === 0 || dow === 6))
+    ) {
+      dates.push(new Date(cur))
+    }
+    cur.setDate(cur.getDate() + (freq === 'weekly' ? 7 : 1))
+  }
+  return dates
+}
+
 // ─── Form ─────────────────────────────────────────────────────────────────────
 interface BlockForm {
   title: string; category: string; date: string
   startHour: number; startMin: number; endHour: number; endMin: number
-  repeatUntil: string
+  repeatFreq: string; repeatUntil: string
 }
-const eoyDate    = new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
+
+const eoyDate = new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
 const defaultForm: BlockForm = {
   title: '', category: 'Work', date: dateStr(new Date()),
-  startHour: 9, startMin: 0, endHour: 10, endMin: 0, repeatUntil: eoyDate,
+  startHour: 9, startMin: 0, endHour: 10, endMin: 0,
+  repeatFreq: 'none', repeatUntil: eoyDate,
 }
 
 // ─── Drag ─────────────────────────────────────────────────────────────────────
 interface DragRef     { date: Date; colEl: HTMLElement; anchorMin: number }
 interface DragPreview { date: Date; startMin: number; endMin: number }
+
+// ─── Delete confirm modal ──────────────────────────────────────────────────────
+interface DeleteConfirm { blockId: string; repeatId?: string }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function CalendarView() {
@@ -86,8 +118,10 @@ export default function CalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [blocks, setBlocks]           = useState<TimeBlock[]>([])
   const [showForm, setShowForm]       = useState(false)
+  const [editingBlock, setEditingBlock] = useState<TimeBlock | null>(null)
   const [form, setForm]               = useState<BlockForm>(defaultForm)
   const [saving, setSaving]           = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null)
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
 
   const dragRef        = useRef<DragRef | null>(null)
@@ -96,7 +130,7 @@ export default function CalendarView() {
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
 
-  // ── Auto-scroll to current time in week/day ────────────────────────────────
+  // ── Auto-scroll to current time ────────────────────────────────────────────
   useEffect(() => {
     if ((mode === 'week' || mode === 'day') && scrollRef.current) {
       const now  = new Date()
@@ -148,6 +182,7 @@ export default function CalendarView() {
       dragPreviewRef.current = null
       setDragPreview(null)
       if (preview && preview.endMin > preview.startMin) {
+        setEditingBlock(null)
         setForm({
           ...defaultForm,
           date:      dateStr(preview.date),
@@ -184,29 +219,88 @@ export default function CalendarView() {
     return currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   }
 
+  // ── Open edit modal ─────────────────────────────────────────────────────────
+  function openEdit(block: TimeBlock) {
+    const st = new Date(block.start_time)
+    const et = new Date(block.end_time)
+    setEditingBlock(block)
+    setForm({
+      title:       block.title,
+      category:    block.category,
+      date:        dateStr(st),
+      startHour:   st.getHours(),
+      startMin:    st.getMinutes(),
+      endHour:     et.getHours(),
+      endMin:      et.getMinutes(),
+      repeatFreq:  'none',
+      repeatUntil: eoyDate,
+    })
+    setShowForm(true)
+  }
+
   // ── Save ───────────────────────────────────────────────────────────────────
   async function saveBlock() {
     if (!form.title.trim()) return
     setSaving(true)
     try {
-      const startTime = new Date(`${form.date}T${pad(form.startHour)}:${pad(form.startMin)}:00`).toISOString()
-      const endTime   = new Date(`${form.date}T${pad(form.endHour)}:${pad(form.endMin)}:00`).toISOString()
-      const cat = CATEGORIES.find(c => c.label === form.category)
-      await supabase.from('time_blocks').insert({
-        title: form.title, category: form.category,
-        start_time: startTime, end_time: endTime,
-        color: cat?.color || '#de6690',
-        repeat_until: form.repeatUntil || null,
-      })
+      const cat   = CATEGORIES.find(c => c.label === form.category)
+      const color = cat?.color || '#de6690'
+
+      if (editingBlock) {
+        // Update single event
+        const startTime = new Date(`${form.date}T${pad(form.startHour)}:${pad(form.startMin)}:00`).toISOString()
+        const endTime   = new Date(`${form.date}T${pad(form.endHour)}:${pad(form.endMin)}:00`).toISOString()
+        await supabase.from('time_blocks').update({
+          title: form.title, category: form.category, color,
+          start_time: startTime, end_time: endTime,
+        }).eq('id', editingBlock.id)
+      } else {
+        // New event — generate occurrences
+        const dates     = getRepeatDates(form.date, form.repeatUntil, form.repeatFreq)
+        const repeatId  = dates.length > 1 ? crypto.randomUUID() : undefined
+        const rows = dates.map(d => {
+          const ds = dateStr(d)
+          return {
+            title:        form.title,
+            category:     form.category,
+            color,
+            start_time:   new Date(`${ds}T${pad(form.startHour)}:${pad(form.startMin)}:00`).toISOString(),
+            end_time:     new Date(`${ds}T${pad(form.endHour)}:${pad(form.endMin)}:00`).toISOString(),
+            repeat_until: form.repeatFreq !== 'none' ? form.repeatUntil : null,
+            repeat_id:    repeatId ?? null,
+          }
+        })
+        // Batch insert in chunks to avoid payload limits
+        const BATCH = 500
+        for (let i = 0; i < rows.length; i += BATCH) {
+          await supabase.from('time_blocks').insert(rows.slice(i, i + BATCH))
+        }
+      }
+
       await loadBlocks()
-      setShowForm(false); setForm(defaultForm)
+      setShowForm(false)
+      setEditingBlock(null)
+      setForm(defaultForm)
     } catch (_) {}
     setSaving(false)
   }
 
-  async function deleteBlock(id: string) {
-    await supabase.from('time_blocks').delete().eq('id', id)
-    setBlocks(prev => prev.filter(b => b.id !== id))
+  // ── Delete ─────────────────────────────────────────────────────────────────
+  function promptDelete(block: TimeBlock) {
+    setDeleteConfirm({ blockId: block.id, repeatId: block.repeat_id })
+  }
+
+  async function confirmDelete(deleteAll: boolean) {
+    if (!deleteConfirm) return
+    if (deleteAll && deleteConfirm.repeatId) {
+      await supabase.from('time_blocks').delete().eq('repeat_id', deleteConfirm.repeatId)
+      setBlocks(prev => prev.filter(b => b.repeat_id !== deleteConfirm.repeatId))
+    } else {
+      await supabase.from('time_blocks').delete().eq('id', deleteConfirm.blockId)
+      setBlocks(prev => prev.filter(b => b.id !== deleteConfirm.blockId))
+    }
+    setDeleteConfirm(null)
+    if (showForm) { setShowForm(false); setEditingBlock(null) }
   }
 
   const blocksForDay = (day: Date) => blocks.filter(b => isSameDay(new Date(b.start_time), day))
@@ -216,7 +310,6 @@ export default function CalendarView() {
     const grid = buildMonthGrid(currentDate)
     return (
       <div className="flex flex-col flex-1 min-h-0">
-        {/* Day-of-week header */}
         <div className="grid grid-cols-7 border-b border-black/[0.06] dark:border-white/[0.05]">
           {DAY_LABELS.map((d, i) => (
             <div
@@ -228,7 +321,6 @@ export default function CalendarView() {
             </div>
           ))}
         </div>
-        {/* Grid cells */}
         <div className="grid grid-cols-7 flex-1 min-h-0" style={{ gridTemplateRows: 'repeat(6, 1fr)' }}>
           {grid.map((day, i) => {
             const isToday        = isSameDay(day, today)
@@ -247,7 +339,6 @@ export default function CalendarView() {
                   ${!isCurrentMonth ? 'bg-transparent' : ''}
                 `}
               >
-                {/* Day number — top right, Apple-style */}
                 <div className="flex justify-center pt-1 pb-0.5">
                   <span className={`
                     w-7 h-7 flex items-center justify-center rounded-full text-[13px] select-none transition-colors
@@ -260,14 +351,13 @@ export default function CalendarView() {
                     {day.getDate()}
                   </span>
                 </div>
-                {/* Events */}
                 <div className="px-1 space-y-0.5 pb-1">
                   {dayBlocks.slice(0, 3).map(b => (
                     <div
                       key={b.id}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-white text-[11px] leading-tight truncate"
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-white text-[11px] leading-tight truncate cursor-pointer"
                       style={{ backgroundColor: b.color }}
-                      onClick={e => e.stopPropagation()}
+                      onClick={e => { e.stopPropagation(); openEdit(b) }}
                     >
                       <span className="truncate font-medium">{b.title}</span>
                     </div>
@@ -294,12 +384,11 @@ export default function CalendarView() {
 
     return (
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        {/* ── Column headers ── */}
+        {/* Column headers */}
         <div
           className="flex-shrink-0 border-b border-black/[0.06] dark:border-white/[0.05] bg-white dark:bg-mauve-800"
           style={{ display: 'grid', gridTemplateColumns: `52px repeat(${colCount}, 1fr)` }}
         >
-          {/* Time-column spacer */}
           <div className="border-r border-black/[0.05] dark:border-white/[0.04]" />
           {days.map((day, i) => {
             const isToday   = isSameDay(day, today)
@@ -331,7 +420,7 @@ export default function CalendarView() {
           })}
         </div>
 
-        {/* ── All-day row ── */}
+        {/* All-day row */}
         <div
           className="flex-shrink-0 border-b border-black/[0.06] dark:border-white/[0.05] bg-white dark:bg-mauve-800"
           style={{ display: 'grid', gridTemplateColumns: `52px repeat(${colCount}, 1fr)` }}
@@ -344,7 +433,7 @@ export default function CalendarView() {
           ))}
         </div>
 
-        {/* ── Scrollable time grid ── */}
+        {/* Scrollable time grid */}
         <div className="flex-1 overflow-y-auto" ref={scrollRef}>
           <div
             className={dragPreview ? 'select-none' : ''}
@@ -451,6 +540,7 @@ export default function CalendarView() {
                         data-event="1"
                         className="absolute left-px right-px rounded-xl overflow-hidden cursor-pointer group"
                         style={{ top: `${topPx + 1}px`, height: `${hPx - 2}px`, backgroundColor: block.color, zIndex: 5 }}
+                        onClick={() => openEdit(block)}
                       >
                         <div className="px-2 py-1 h-full flex flex-col justify-start">
                           <p className="text-[11px] font-semibold text-white leading-tight truncate">{block.title}</p>
@@ -460,12 +550,11 @@ export default function CalendarView() {
                             </p>
                           )}
                         </div>
-                        <button
-                          onClick={e => { e.stopPropagation(); deleteBlock(block.id) }}
-                          className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 bg-black/25 rounded-md p-0.5 transition-opacity"
-                        >
-                          <X size={10} className="text-white" />
-                        </button>
+                        {block.repeat_id && (
+                          <div className="absolute bottom-0.5 right-1 opacity-60">
+                            <Repeat size={8} className="text-white" />
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -481,21 +570,21 @@ export default function CalendarView() {
   const renderWeek = () => renderTimeGrid(Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(currentDate), i)))
   const renderDay  = () => { const d = new Date(currentDate); d.setHours(0,0,0,0); return renderTimeGrid([d]) }
 
+  const isEditing = !!editingBlock
+
   // ── Shell ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[calc(100dvh-8rem)]">
-      {/* Toolbar — Apple Calendar layout */}
+      {/* Toolbar */}
       <div className="flex items-center gap-1.5 mb-3 flex-shrink-0 flex-wrap">
-        {/* Add button */}
         <button
-          onClick={() => { setForm(defaultForm); setShowForm(true) }}
+          onClick={() => { setEditingBlock(null); setForm(defaultForm); setShowForm(true) }}
           className="w-7 h-7 flex items-center justify-center bg-blush-500 hover:bg-blush-600 text-white rounded-full shadow-sm transition-colors mr-1"
           title="New event"
         >
           <Plus size={15} strokeWidth={2.5} />
         </button>
 
-        {/* Today */}
         <button
           onClick={() => setCurrentDate(new Date())}
           className="px-3 py-1.5 text-[12px] font-medium rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-mauve-500 dark:text-mauve-400 hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors"
@@ -503,7 +592,6 @@ export default function CalendarView() {
           Today
         </button>
 
-        {/* Prev / Next */}
         <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-blush-100 dark:hover:bg-mauve-700 text-mauve-400 transition-colors">
           <ChevronLeft size={16} strokeWidth={2} />
         </button>
@@ -511,12 +599,10 @@ export default function CalendarView() {
           <ChevronRight size={16} strokeWidth={2} />
         </button>
 
-        {/* Title */}
         <h2 className="font-semibold text-[16px] text-plum-800 dark:text-mauve-100 flex-1 ml-1 tracking-tight">
           {getTitle()}
         </h2>
 
-        {/* Segmented control */}
         <div className="flex rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] text-[12px] font-medium bg-white dark:bg-mauve-800">
           {(['day', 'week', 'month'] as CalMode[]).map(m => (
             <button
@@ -541,20 +627,40 @@ export default function CalendarView() {
         {mode === 'day'   && renderDay()}
       </div>
 
-      {/* Add Event modal */}
+      {/* Add / Edit Event modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-mauve-800 rounded-3xl shadow-modal w-full max-w-md border border-black/[0.05] dark:border-white/[0.05]">
             <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-black/[0.05] dark:border-white/[0.05]">
-              <h3 className="font-semibold text-[15px] text-plum-800 dark:text-mauve-100 tracking-tight">New Event</h3>
-              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400 transition-colors">
+              <h3 className="font-semibold text-[15px] text-plum-800 dark:text-mauve-100 tracking-tight">
+                {isEditing ? 'Edit Event' : 'New Event'}
+              </h3>
+              <button
+                onClick={() => { setShowForm(false); setEditingBlock(null); setForm(defaultForm) }}
+                className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400 transition-colors"
+              >
                 <X size={17} />
               </button>
             </div>
+
+            {/* Recurring series banner */}
+            {isEditing && editingBlock?.repeat_id && (
+              <div className="mx-6 mt-4 px-3 py-2 rounded-xl bg-blush-50 dark:bg-blush-900/20 flex items-center gap-2">
+                <Repeat size={12} className="text-blush-500 flex-shrink-0" />
+                <p className="text-[12px] text-blush-600 dark:text-blush-300">Part of a repeating series — editing this occurrence only</p>
+              </div>
+            )}
+
             <div className="p-6 space-y-4">
               <div>
                 <label className="field-label">Title</label>
-                <input className="input-field" placeholder="Event name…" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} autoFocus />
+                <input
+                  className="input-field"
+                  placeholder="Event name…"
+                  value={form.title}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  autoFocus
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -607,16 +713,103 @@ export default function CalendarView() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="field-label"><Repeat size={10} className="inline mr-1" />Repeat Until</label>
-                <input type="date" className="input-field" value={form.repeatUntil} onChange={e => setForm(f => ({ ...f, repeatUntil: e.target.value }))} />
-                <p className="text-[11px] text-mauve-400 mt-1">Repeats daily through end of year by default</p>
-              </div>
+
+              {/* Repeat options — only when creating a new event */}
+              {!isEditing && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="field-label"><Repeat size={10} className="inline mr-1" />Repeat</label>
+                    <select
+                      className="input-field"
+                      value={form.repeatFreq}
+                      onChange={e => setForm(f => ({ ...f, repeatFreq: e.target.value }))}
+                    >
+                      {REPEAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  {form.repeatFreq !== 'none' && (
+                    <div>
+                      <label className="field-label">Repeat Until</label>
+                      <input
+                        type="date"
+                        className="input-field"
+                        value={form.repeatUntil}
+                        min={form.date}
+                        onChange={e => setForm(f => ({ ...f, repeatUntil: e.target.value }))}
+                      />
+                      <p className="text-[11px] text-mauve-400 mt-1">
+                        {getRepeatDates(form.date, form.repeatUntil, form.repeatFreq).length} occurrence{getRepeatDates(form.date, form.repeatUntil, form.repeatFreq).length !== 1 ? 's' : ''} will be created
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex gap-2.5 px-6 pb-6">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-black/[0.1] dark:border-white/[0.1] text-mauve-400 text-[13px] font-medium hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors">Cancel</button>
-              <button onClick={saveBlock} disabled={saving || !form.title.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-[13px] font-semibold transition-colors shadow-sm">
-                {saving ? 'Saving…' : 'Add Event'}
+
+            <div className="px-6 pb-6 space-y-2.5">
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => { setShowForm(false); setEditingBlock(null); setForm(defaultForm) }}
+                  className="flex-1 py-2.5 rounded-xl border border-black/[0.1] dark:border-white/[0.1] text-mauve-400 text-[13px] font-medium hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveBlock}
+                  disabled={saving || !form.title.trim()}
+                  className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-[13px] font-semibold transition-colors shadow-sm"
+                >
+                  {saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Add Event'}
+                </button>
+              </div>
+
+              {/* Delete button — shown only when editing */}
+              {isEditing && (
+                <button
+                  onClick={() => { setShowForm(false); promptDelete(editingBlock!) }}
+                  className="w-full py-2.5 rounded-xl border border-red-200 dark:border-red-900/50 text-red-400 text-[13px] font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  Delete Event
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-mauve-800 rounded-3xl shadow-modal w-full max-w-sm border border-black/[0.05] dark:border-white/[0.05] p-6">
+            <h3 className="font-semibold text-[15px] text-plum-800 dark:text-mauve-100 mb-1">Delete Event</h3>
+            {deleteConfirm.repeatId
+              ? <p className="text-[13px] text-mauve-400 mb-5">This is a repeating event. Delete just this occurrence or the entire series?</p>
+              : <p className="text-[13px] text-mauve-400 mb-5">Are you sure you want to delete this event?</p>
+            }
+            <div className="space-y-2">
+              {deleteConfirm.repeatId && (
+                <button
+                  onClick={() => confirmDelete(true)}
+                  className="w-full py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-[13px] font-semibold transition-colors"
+                >
+                  Delete All in Series
+                </button>
+              )}
+              <button
+                onClick={() => confirmDelete(false)}
+                className={`w-full py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                  deleteConfirm.repeatId
+                    ? 'border border-red-200 dark:border-red-900/50 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+                    : 'bg-red-500 hover:bg-red-600 text-white'
+                }`}
+              >
+                Delete This Event Only
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="w-full py-2.5 rounded-xl border border-black/[0.1] dark:border-white/[0.1] text-mauve-400 text-[13px] font-medium hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors"
+              >
+                Cancel
               </button>
             </div>
           </div>
