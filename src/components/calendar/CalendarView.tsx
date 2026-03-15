@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Clock, Repeat } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, Clock, Repeat, GripVertical } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import type { TimeBlock } from '@/lib/types'
@@ -105,9 +105,21 @@ const defaultForm: BlockForm = {
   repeatFreq: 'none', repeatUntil: eoyDate,
 }
 
-// ─── Drag ─────────────────────────────────────────────────────────────────────
+// ─── Drag (create new) ───────────────────────────────────────────────────────
 interface DragRef     { date: Date; colEl: HTMLElement; anchorMin: number }
 interface DragPreview { date: Date; startMin: number; endMin: number }
+
+// ─── Drag (move existing) ────────────────────────────────────────────────────
+interface MoveDragRef {
+  block: TimeBlock
+  durMin: number
+  offsetMin: number   // click offset from event top
+  originX: number     // initial clientX
+  originY: number     // initial clientY
+  didMove: boolean
+  cols: { el: HTMLElement; date: Date }[]
+}
+interface MovePreview { blockId: string; date: Date; startMin: number; endMin: number }
 
 // ─── Delete confirm modal ──────────────────────────────────────────────────────
 interface DeleteConfirm { blockId: string; repeatId?: string }
@@ -123,10 +135,14 @@ export default function CalendarView() {
   const [saving, setSaving]           = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null)
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
+  const [movePreview, setMovePreview] = useState<MovePreview | null>(null)
 
-  const dragRef        = useRef<DragRef | null>(null)
-  const dragPreviewRef = useRef<DragPreview | null>(null)
-  const scrollRef      = useRef<HTMLDivElement>(null)
+  const dragRef          = useRef<DragRef | null>(null)
+  const dragPreviewRef   = useRef<DragPreview | null>(null)
+  const moveDragRef      = useRef<MoveDragRef | null>(null)
+  const movePreviewRef   = useRef<MovePreview | null>(null)
+  const scrollRef        = useRef<HTMLDivElement>(null)
+  const colRefs          = useRef<Map<string, { el: HTMLElement; date: Date }>>(new Map())
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
 
@@ -162,9 +178,34 @@ export default function CalendarView() {
   useEffect(() => { loadBlocks() }, [loadBlocks])
   useRealtimeSync('time_blocks', loadBlocks)
 
-  // ── Global drag ────────────────────────────────────────────────────────────
+  // ── Global drag (create + move) ────────────────────────────────────────────
   useEffect(() => {
     function onMove(e: MouseEvent) {
+      // ── Move existing event ──
+      if (moveDragRef.current) {
+        const md = moveDragRef.current
+        const dx = e.clientX - md.originX
+        const dy = e.clientY - md.originY
+        if (!md.didMove && Math.abs(dx) < 5 && Math.abs(dy) < 5) return
+        md.didMove = true
+
+        // Find which column the cursor is over
+        let bestCol = md.cols[0]
+        for (const col of md.cols) {
+          const r = col.el.getBoundingClientRect()
+          if (e.clientX >= r.left && e.clientX < r.right) { bestCol = col; break }
+        }
+        const rect     = bestCol.el.getBoundingClientRect()
+        const curMin   = pxToMin(e.clientY - rect.top - md.offsetMin)
+        const startMin = Math.max(0, Math.min(curMin, 24 * 60 - md.durMin))
+        const snapped  = Math.round(startMin / 15) * 15
+        const mp: MovePreview = { blockId: md.block.id, date: bestCol.date, startMin: snapped, endMin: snapped + md.durMin }
+        movePreviewRef.current = mp
+        setMovePreview(mp)
+        return
+      }
+
+      // ── Create new event drag ──
       if (!dragRef.current) return
       const { colEl, date, anchorMin } = dragRef.current
       const rect   = colEl.getBoundingClientRect()
@@ -175,7 +216,35 @@ export default function CalendarView() {
       dragPreviewRef.current = preview
       setDragPreview(preview)
     }
-    function onUp() {
+
+    async function onUp() {
+      // ── Finish move ──
+      if (moveDragRef.current) {
+        const md = moveDragRef.current
+        moveDragRef.current = null
+        if (!md.didMove) {
+          movePreviewRef.current = null
+          setMovePreview(null)
+          openEdit(md.block)
+          return
+        }
+        const mp = movePreviewRef.current
+        movePreviewRef.current = null
+        setMovePreview(null)
+        if (mp) {
+          const newStart = new Date(`${dateStr(mp.date)}T${pad(Math.floor(mp.startMin / 60))}:${pad(mp.startMin % 60)}:00`)
+          const newEnd   = new Date(`${dateStr(mp.date)}T${pad(Math.floor(mp.endMin / 60))}:${pad(mp.endMin % 60)}:00`)
+          // Optimistic update
+          setBlocks(prev => prev.map(b => b.id === mp.blockId ? { ...b, start_time: newStart.toISOString(), end_time: newEnd.toISOString() } : b))
+          await supabase.from('time_blocks').update({
+            start_time: newStart.toISOString(),
+            end_time:   newEnd.toISOString(),
+          }).eq('id', mp.blockId)
+        }
+        return
+      }
+
+      // ── Finish create ──
       if (!dragRef.current) return
       const preview = dragPreviewRef.current
       dragRef.current      = null
@@ -436,7 +505,7 @@ export default function CalendarView() {
         {/* Scrollable time grid */}
         <div className="flex-1 overflow-y-auto" ref={scrollRef}>
           <div
-            className={dragPreview ? 'select-none' : ''}
+            className={dragPreview || movePreview ? 'select-none' : ''}
             style={{ display: 'grid', gridTemplateColumns: `52px repeat(${colCount}, 1fr)`, height: `${HOURS.length * CELL_H}px`, position: 'relative' }}
           >
             {/* Hour labels */}
@@ -462,6 +531,7 @@ export default function CalendarView() {
               return (
                 <div
                   key={di}
+                  ref={el => { if (el) colRefs.current.set(dateStr(day), { el, date: day }) }}
                   className={`relative border-r border-black/[0.05] dark:border-white/[0.04] last:border-r-0 cursor-crosshair select-none
                     ${isToday   ? 'bg-blush-50/30 dark:bg-blush-900/10' : ''}
                     ${isWeekend && !isToday ? 'bg-black/[0.012] dark:bg-white/[0.01]' : ''}
@@ -529,18 +599,41 @@ export default function CalendarView() {
 
                   {/* Events */}
                   {dayBlocks.map(block => {
-                    const st     = new Date(block.start_time)
-                    const et     = new Date(block.end_time)
-                    const topPx  = (st.getHours() * 60 + st.getMinutes()) / 60 * CELL_H
-                    const durMin = (et.getTime() - st.getTime()) / 60000
-                    const hPx    = Math.max(durMin / 60 * CELL_H, 22)
+                    const moving   = movePreview?.blockId === block.id
+                    const mp       = moving ? movePreview : null
+                    const isOnThisDay = mp ? isSameDay(mp.date, day) : true
+                    const st       = mp && isOnThisDay ? (() => { const d = new Date(mp.date); d.setHours(0,0,0,0); d.setMinutes(mp.startMin); return d })() : new Date(block.start_time)
+                    const et       = mp && isOnThisDay ? (() => { const d = new Date(mp.date); d.setHours(0,0,0,0); d.setMinutes(mp.endMin); return d })() : new Date(block.end_time)
+                    const topPx    = (st.getHours() * 60 + st.getMinutes()) / 60 * CELL_H
+                    const durMin   = (et.getTime() - st.getTime()) / 60000
+                    const hPx      = Math.max(durMin / 60 * CELL_H, 22)
+                    // Hide from original column if being moved to another day
+                    if (moving && !isOnThisDay) return null
                     return (
                       <div
                         key={block.id}
                         data-event="1"
-                        className="absolute left-px right-px rounded-xl overflow-hidden cursor-pointer group"
-                        style={{ top: `${topPx + 1}px`, height: `${hPx - 2}px`, backgroundColor: block.color, zIndex: 5 }}
-                        onClick={() => openEdit(block)}
+                        className={`absolute left-px right-px rounded-xl overflow-hidden cursor-grab active:cursor-grabbing group transition-shadow
+                          ${moving ? 'shadow-lg ring-2 ring-blush-400/50 opacity-90 z-30' : ''}`}
+                        style={{ top: `${topPx + 1}px`, height: `${hPx - 2}px`, backgroundColor: block.color, zIndex: moving ? 30 : 5 }}
+                        onMouseDown={e => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          const rect      = e.currentTarget.parentElement!.getBoundingClientRect()
+                          const eventTop  = topPx + 1
+                          const clickY    = e.clientY - rect.top
+                          const offsetMin = (clickY - eventTop) / CELL_H * 60
+                          const cols = Array.from(colRefs.current.values())
+                          moveDragRef.current = {
+                            block,
+                            durMin: (new Date(block.end_time).getTime() - new Date(block.start_time).getTime()) / 60000,
+                            offsetMin: Math.max(0, offsetMin),
+                            originX: e.clientX,
+                            originY: e.clientY,
+                            didMove: false,
+                            cols,
+                          }
+                        }}
                       >
                         <div className="px-2 py-1 h-full flex flex-col justify-start">
                           <p className="text-[11px] font-semibold text-white leading-tight truncate">{block.title}</p>
@@ -553,6 +646,11 @@ export default function CalendarView() {
                         {block.repeat_id && (
                           <div className="absolute bottom-0.5 right-1 opacity-60">
                             <Repeat size={8} className="text-white" />
+                          </div>
+                        )}
+                        {!moving && (
+                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-40 transition-opacity">
+                            <GripVertical size={10} className="text-white" />
                           </div>
                         )}
                       </div>
