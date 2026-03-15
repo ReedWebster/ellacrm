@@ -316,13 +316,41 @@ export default function CalendarView() {
       const color = cat?.color || '#de6690'
 
       if (editingBlock) {
-        // Update single event
         const startTime = new Date(`${form.date}T${pad(form.startHour)}:${pad(form.startMin)}:00`).toISOString()
         const endTime   = new Date(`${form.date}T${pad(form.endHour)}:${pad(form.endMin)}:00`).toISOString()
-        await supabase.from('time_blocks').update({
-          title: form.title, category: form.category, color,
-          start_time: startTime, end_time: endTime,
-        }).eq('id', editingBlock.id)
+
+        if (form.repeatFreq !== 'none' && !editingBlock.repeat_id) {
+          // Convert single event to repeating series
+          // Update the original event first
+          const repeatId = crypto.randomUUID()
+          await supabase.from('time_blocks').update({
+            title: form.title, category: form.category, color,
+            start_time: startTime, end_time: endTime,
+            repeat_id: repeatId, repeat_until: form.repeatUntil,
+          }).eq('id', editingBlock.id)
+          // Generate additional occurrences (skip the first date — that's the existing event)
+          const dates = getRepeatDates(form.date, form.repeatUntil, form.repeatFreq)
+          const extraRows = dates.slice(1).map(d => {
+            const ds = dateStr(d)
+            return {
+              title: form.title, category: form.category, color,
+              start_time: new Date(`${ds}T${pad(form.startHour)}:${pad(form.startMin)}:00`).toISOString(),
+              end_time:   new Date(`${ds}T${pad(form.endHour)}:${pad(form.endMin)}:00`).toISOString(),
+              repeat_until: form.repeatUntil,
+              repeat_id:    repeatId,
+            }
+          })
+          const BATCH = 500
+          for (let i = 0; i < extraRows.length; i += BATCH) {
+            await supabase.from('time_blocks').insert(extraRows.slice(i, i + BATCH))
+          }
+        } else {
+          // Simple update (single event stays single, or editing one occurrence of a series)
+          await supabase.from('time_blocks').update({
+            title: form.title, category: form.category, color,
+            start_time: startTime, end_time: endTime,
+          }).eq('id', editingBlock.id)
+        }
       } else {
         // New event — generate occurrences
         const dates     = getRepeatDates(form.date, form.repeatUntil, form.repeatFreq)
@@ -812,8 +840,8 @@ export default function CalendarView() {
                 </div>
               </div>
 
-              {/* Repeat options — only when creating a new event */}
-              {!isEditing && (
+              {/* Repeat options — show for new events or single (non-repeating) events being edited */}
+              {(!isEditing || (isEditing && !editingBlock?.repeat_id)) && (
                 <div className="space-y-3">
                   <div>
                     <label className="field-label"><Repeat size={10} className="inline mr-1" />Repeat</label>
