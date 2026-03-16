@@ -198,15 +198,15 @@ export default function AcademicsView() {
     <div className="max-w-3xl mx-auto space-y-5">
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 p-4 text-center">
+        <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 p-4 text-center card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md hover:-translate-y-px">
           <p className="text-2xl font-bold text-plum-800 dark:text-mauve-100">{courses.length}</p>
           <p className="text-xs text-mauve-400 mt-0.5">Courses</p>
         </div>
-        <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 p-4 text-center">
+        <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 p-4 text-center card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md hover:-translate-y-px">
           <p className="text-2xl font-bold text-amber-500">{totalUpcoming}</p>
           <p className="text-xs text-mauve-400 mt-0.5">Upcoming</p>
         </div>
-        <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 p-4 text-center">
+        <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 p-4 text-center card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md hover:-translate-y-px">
           {gpa ? (
             <>
               <p className={`text-2xl font-bold ${gradeColor(parseFloat(gpa) * 25)}`}>{gpa}</p>
@@ -214,7 +214,7 @@ export default function AcademicsView() {
             </>
           ) : (
             <>
-              <p className="text-2xl font-bold text-mauve-300">—</p>
+              <p className="text-2xl font-bold text-mauve-300">--</p>
               <p className="text-xs text-mauve-400 mt-0.5">GPA</p>
             </>
           )}
@@ -226,7 +226,7 @@ export default function AcademicsView() {
         <p className="text-sm text-mauve-400">{totalDone} assignments completed</p>
         <button
           onClick={() => { setEditCourse(null); setCourseForm({ name: '', instructor: '', credits: '3', color: COURSE_COLORS[courses.length % COURSE_COLORS.length], semester: currentSemester() }); setShowCourseForm(true) }}
-          className="flex items-center gap-2 px-4 py-2 bg-blush-500 hover:bg-blush-600 text-white rounded-xl text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-colors"
         >
           <Plus size={16} />
           Add Course
@@ -234,12 +234,20 @@ export default function AcademicsView() {
       </div>
 
       {/* Course list */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {courses.length === 0 ? (
-          <div className="text-center py-16 text-mauve-400">
-            <GraduationCap size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No courses yet</p>
-            <p className="text-sm mt-1">Add your first course to get started</p>
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <GraduationCap size={24} className="text-blue-500" />
+            </div>
+            <p className="empty-state-title">No courses yet</p>
+            <p className="empty-state-desc">Add your first course to get started</p>
+            <button
+              onClick={() => { setEditCourse(null); setCourseForm({ name: '', instructor: '', credits: '3', color: COURSE_COLORS[0], semester: currentSemester() }); setShowCourseForm(true) }}
+              className="empty-state-action !bg-blue-500 hover:!bg-blue-600"
+            >
+              <Plus size={16} /> Add a course
+            </button>
           </div>
         ) : (
           courses.map(course => {
@@ -251,7 +259,7 @@ export default function AcademicsView() {
             const isExpanded = expandedCourse === course.id
 
             return (
-              <div key={course.id} className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden">
+              <div key={course.id} className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md">
                 {/* Course header */}
                 <div className="p-5">
                   <div className="flex items-start gap-3">
@@ -275,10 +283,10 @@ export default function AcademicsView() {
                               <p className="text-xs text-mauve-400">{avgPct.toFixed(1)}%</p>
                             </div>
                           )}
-                          <button onClick={() => { setEditCourse(course); setCourseForm({ name: course.name, instructor: course.instructor || '', credits: String(course.credits || 3), color: course.color, semester: course.semester }); setShowCourseForm(true) }} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400">
+                          <button onClick={() => { setEditCourse(course); setCourseForm({ name: course.name, instructor: course.instructor || '', credits: String(course.credits || 3), color: course.color, semester: course.semester }); setShowCourseForm(true) }} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400 transition-colors">
                             <Pencil size={14} />
                           </button>
-                          <button onClick={() => deleteCourse(course.id)} className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-mauve-400 hover:text-rose-500">
+                          <button onClick={() => deleteCourse(course.id)} className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-mauve-400 hover:text-rose-500 transition-colors">
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -293,7 +301,7 @@ export default function AcademicsView() {
                           </div>
                           <div className="h-1.5 bg-blush-100 dark:bg-mauve-700 rounded-full overflow-hidden">
                             <div
-                              className="h-full rounded-full transition-all"
+                              className="h-full rounded-full transition-all duration-500"
                               style={{
                                 width: `${(course.assignments.filter(a => a.completed).length / course.assignments.length) * 100}%`,
                                 backgroundColor: course.color,
@@ -307,7 +315,7 @@ export default function AcademicsView() {
 
                   <button
                     onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
-                    className="mt-3 w-full flex items-center justify-center gap-1 text-xs text-mauve-400 hover:text-blush-500 py-1"
+                    className="mt-3 w-full flex items-center justify-center gap-1 text-xs text-mauve-400 hover:text-blue-500 py-1 transition-colors"
                   >
                     {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     {isExpanded ? 'Hide assignments' : `Assignments (${course.assignments.length})`}
@@ -318,17 +326,17 @@ export default function AcademicsView() {
                 {isExpanded && (
                   <div className="border-t border-blush-100 dark:border-mauve-700 bg-blush-50/30 dark:bg-mauve-700/20">
                     {course.assignments.length === 0 ? (
-                      <p className="text-center text-xs text-mauve-400 py-4">No assignments yet</p>
+                      <p className="text-center text-xs text-mauve-400 py-6">No assignments yet</p>
                     ) : (
                       <div className="divide-y divide-blush-50 dark:divide-mauve-700/50">
                         {course.assignments.map(a => {
                           const isOverdue = a.due_date && !a.completed && new Date(a.due_date) < new Date()
                           return (
-                            <div key={a.id} className="flex items-center gap-3 px-5 py-3 group">
+                            <div key={a.id} className="flex items-center gap-3 px-5 py-3 group hover:bg-blush-50/50 dark:hover:bg-mauve-700/30 transition-colors">
                               <button onClick={() => toggleAssignment(a, course.id)} className="flex-shrink-0">
                                 {a.completed
-                                  ? <CheckCircle2 size={16} style={{ color: course.color }} />
-                                  : <Circle size={16} className="text-mauve-300 hover:text-blush-400" />
+                                  ? <CheckCircle2 size={16} style={{ color: course.color }} className="animate-check-pop" />
+                                  : <Circle size={16} className="text-mauve-300 hover:text-blush-400 transition-colors" />
                                 }
                               </button>
                               <div className="flex-1 min-w-0">
@@ -350,7 +358,7 @@ export default function AcademicsView() {
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 <input
                                   type="number"
-                                  placeholder="—"
+                                  placeholder="--"
                                   defaultValue={a.grade ?? ''}
                                   onBlur={e => updateGrade(a, course.id, e.target.value)}
                                   className="w-12 text-center text-xs rounded-lg border border-blush-200 dark:border-mauve-600 bg-white dark:bg-mauve-700 text-plum-800 dark:text-mauve-100 py-1 focus:outline-none focus:ring-1 focus:ring-blush-400"
@@ -383,9 +391,9 @@ export default function AcademicsView() {
                           <input className="input-field text-sm" placeholder="Out of (e.g. 100)" type="number" value={assignForm.max_grade} onChange={e => setAssignForm(f => ({ ...f, max_grade: e.target.value }))} />
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => setShowAssignmentForm(null)} className="flex-1 py-2 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm">Cancel</button>
-                          <button onClick={() => saveAssignment(course.id)} disabled={saving || !assignForm.title.trim()} className="flex-1 py-2 rounded-xl bg-blush-500 text-white text-sm disabled:opacity-50">
-                            {saving ? 'Saving…' : 'Add'}
+                          <button onClick={() => setShowAssignmentForm(null)} className="flex-1 py-2 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors">Cancel</button>
+                          <button onClick={() => saveAssignment(course.id)} disabled={saving || !assignForm.title.trim()} className="flex-1 py-2 rounded-xl bg-blush-500 text-white text-sm disabled:opacity-50 hover:bg-blush-600 transition-colors">
+                            {saving ? 'Saving...' : 'Add'}
                           </button>
                         </div>
                       </div>
@@ -393,7 +401,7 @@ export default function AcademicsView() {
                       <div className="px-5 py-3 border-t border-blush-100 dark:border-mauve-700">
                         <button
                           onClick={() => { setAssignForm({ title: '', type: 'homework', due_date: '', grade: '', max_grade: '100', notes: '' }); setShowAssignmentForm(course.id) }}
-                          className="flex items-center gap-2 text-sm text-blush-500 hover:text-blush-600 font-medium"
+                          className="flex items-center gap-2 text-sm text-blue-500 hover:text-blue-600 font-medium transition-colors"
                         >
                           <Plus size={14} />
                           Add assignment
@@ -410,8 +418,8 @@ export default function AcademicsView() {
 
       {/* Course form modal */}
       {showCourseForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-mauve-800 rounded-3xl shadow-xl w-full max-w-md border border-blush-100 dark:border-mauve-700">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-blush-100 dark:border-mauve-700">
               <h3 className="font-semibold text-plum-800 dark:text-mauve-100">{editCourse ? 'Edit Course' : 'Add Course'}</h3>
               <button onClick={() => setShowCourseForm(false)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400"><X size={18} /></button>
@@ -439,15 +447,15 @@ export default function AcademicsView() {
                 <label className="field-label">Color</label>
                 <div className="flex gap-2 mt-1">
                   {COURSE_COLORS.map(color => (
-                    <button key={color} onClick={() => setCourseForm(f => ({ ...f, color }))} className={`w-8 h-8 rounded-full transition-transform ${courseForm.color === color ? 'scale-110 ring-2 ring-offset-2 ring-blush-400' : ''}`} style={{ backgroundColor: color }} />
+                    <button key={color} onClick={() => setCourseForm(f => ({ ...f, color }))} className={`w-8 h-8 rounded-full transition-all duration-150 ${courseForm.color === color ? 'scale-110 ring-2 ring-offset-2 ring-blush-400' : 'hover:scale-105'}`} style={{ backgroundColor: color }} />
                   ))}
                 </div>
               </div>
             </div>
             <div className="flex gap-3 p-6 pt-0">
-              <button onClick={() => setShowCourseForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm">Cancel</button>
-              <button onClick={saveCourse} disabled={saving || !courseForm.name.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium">
-                {saving ? 'Saving…' : editCourse ? 'Save' : 'Add Course'}
+              <button onClick={() => setShowCourseForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors">Cancel</button>
+              <button onClick={saveCourse} disabled={saving || !courseForm.name.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium transition-colors">
+                {saving ? 'Saving...' : editCourse ? 'Save' : 'Add Course'}
               </button>
             </div>
           </div>

@@ -600,7 +600,7 @@ export default function CalendarView() {
                       style={{ top: `${nowTop}px` }}
                     >
                       <div
-                        className="w-2.5 h-2.5 rounded-full bg-blush-500 flex-shrink-0 shadow-sm"
+                        className="w-2.5 h-2.5 rounded-full bg-blush-500 flex-shrink-0 shadow-sm animate-pulse-dot"
                         style={{ marginLeft: '-4px' }}
                       />
                       <div className="flex-1 h-[1.5px] bg-blush-500" />
@@ -755,8 +755,8 @@ export default function CalendarView() {
 
       {/* Add / Edit Event modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-mauve-800 rounded-3xl shadow-modal w-full max-w-md border border-black/[0.05] dark:border-white/[0.05]">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-md">
             <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-black/[0.05] dark:border-white/[0.05]">
               <h3 className="font-semibold text-[15px] text-plum-800 dark:text-mauve-100 tracking-tight">
                 {isEditing ? 'Edit Event' : 'New Event'}
@@ -905,8 +905,8 @@ export default function CalendarView() {
 
       {/* Delete confirm modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-mauve-800 rounded-3xl shadow-modal w-full max-w-sm border border-black/[0.05] dark:border-white/[0.05] p-6">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-sm p-6">
             <h3 className="font-semibold text-[15px] text-plum-800 dark:text-mauve-100 mb-1">Delete Event</h3>
             {deleteConfirm.repeatId
               ? <p className="text-[13px] text-mauve-400 mb-5">This is a repeating event. Delete just this occurrence or the entire series?</p>

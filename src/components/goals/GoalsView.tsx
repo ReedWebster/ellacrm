@@ -33,7 +33,7 @@ function GoalCard({
   const totalMilestones = goal.milestones.length
 
   return (
-    <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden">
+    <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md hover:-translate-y-px">
       <div className="p-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
@@ -55,10 +55,10 @@ function GoalCard({
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => onEdit(goal)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400 hover:text-blush-500">
+            <button onClick={() => onEdit(goal)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400 hover:text-blush-500 transition-colors">
               <Pencil size={14} />
             </button>
-            <button onClick={() => onDelete(goal.id)} className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-mauve-400 hover:text-rose-500">
+            <button onClick={() => onDelete(goal.id)} className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-mauve-400 hover:text-rose-500 transition-colors">
               <Trash2 size={14} />
             </button>
           </div>
@@ -101,7 +101,7 @@ function GoalCard({
               {goal.milestones.map(m => (
                 <div
                   key={m.id}
-                  className="w-2 h-2 rounded-full"
+                  className="w-2 h-2 rounded-full transition-colors"
                   style={{ backgroundColor: m.completed ? goal.color : '#e5e5e5' }}
                 />
               ))}
@@ -112,7 +112,7 @@ function GoalCard({
         {/* Expand button */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="mt-3 w-full flex items-center justify-center gap-1 text-xs text-mauve-400 hover:text-blush-500 py-1"
+          className="mt-3 w-full flex items-center justify-center gap-1 text-xs text-mauve-400 hover:text-emerald-500 py-1 transition-colors"
         >
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           {expanded ? 'Hide milestones' : 'Manage milestones'}
@@ -123,7 +123,7 @@ function GoalCard({
       {expanded && (
         <div className="border-t border-blush-100 dark:border-mauve-700 p-5 space-y-2 bg-blush-50/50 dark:bg-mauve-700/30">
           {goal.milestones.length === 0 ? (
-            <p className="text-xs text-mauve-400">No milestones yet</p>
+            <p className="text-xs text-mauve-400 text-center py-2">No milestones yet</p>
           ) : (
             goal.milestones.map(m => (
               <button
@@ -132,7 +132,7 @@ function GoalCard({
                 className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-blush-100 dark:hover:bg-mauve-600 text-left transition-colors"
               >
                 {m.completed
-                  ? <CheckCircle2 size={16} style={{ color: goal.color }} className="flex-shrink-0" />
+                  ? <CheckCircle2 size={16} style={{ color: goal.color }} className="flex-shrink-0 animate-check-pop" />
                   : <Circle size={16} className="text-mauve-300 flex-shrink-0" />
                 }
                 <span className={`text-sm ${m.completed ? 'line-through text-mauve-400' : 'text-plum-800 dark:text-mauve-100'}`}>
@@ -144,7 +144,7 @@ function GoalCard({
           <div className="flex gap-2 pt-1">
             <input
               className="input-field text-sm flex-1"
-              placeholder="Add milestone…"
+              placeholder="Add milestone..."
               value={newMilestone}
               onChange={e => setNewMilestone(e.target.value)}
               onKeyDown={e => {
@@ -161,7 +161,7 @@ function GoalCard({
                   setNewMilestone('')
                 }
               }}
-              className="px-3 py-2 bg-blush-500 text-white rounded-lg text-sm hover:bg-blush-600"
+              className="px-3 py-2 bg-blush-500 text-white rounded-lg text-sm hover:bg-blush-600 transition-colors"
             >
               <Plus size={14} />
             </button>
@@ -282,13 +282,13 @@ export default function GoalsView() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="max-w-2xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-mauve-400">{goals.length} goal{goals.length !== 1 ? 's' : ''} tracked</p>
         <button
           onClick={() => { setEditGoal(null); setForm({ title: '', description: '', category: 'Personal', target_date: '', color: GOAL_COLORS[goals.length % GOAL_COLORS.length] }); setShowForm(true) }}
-          className="flex items-center gap-2 px-4 py-2 bg-blush-500 hover:bg-blush-600 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
         >
           <Plus size={16} />
           New Goal
@@ -298,10 +298,18 @@ export default function GoalsView() {
       {/* Goals grid */}
       <div className="grid md:grid-cols-2 gap-4">
         {goals.length === 0 ? (
-          <div className="col-span-2 text-center py-16 text-mauve-400">
-            <Target size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No goals yet</p>
-            <p className="text-sm mt-1">Set your first goal and start tracking progress</p>
+          <div className="col-span-2 empty-state">
+            <div className="empty-state-icon">
+              <Target size={24} className="text-emerald-500" />
+            </div>
+            <p className="empty-state-title">No goals yet</p>
+            <p className="empty-state-desc">Set your first goal and start tracking progress</p>
+            <button
+              onClick={() => { setEditGoal(null); setForm({ title: '', description: '', category: 'Personal', target_date: '', color: GOAL_COLORS[0] }); setShowForm(true) }}
+              className="empty-state-action"
+            >
+              <Plus size={16} /> Create a goal
+            </button>
           </div>
         ) : (
           goals.map(goal => (
@@ -320,8 +328,8 @@ export default function GoalsView() {
 
       {/* Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-mauve-800 rounded-3xl shadow-xl w-full max-w-md border border-blush-100 dark:border-mauve-700">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-blush-100 dark:border-mauve-700">
               <h3 className="font-semibold text-plum-800 dark:text-mauve-100">{editGoal ? 'Edit Goal' : 'New Goal'}</h3>
               <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400"><X size={18} /></button>
@@ -354,7 +362,7 @@ export default function GoalsView() {
                     <button
                       key={color}
                       onClick={() => setForm(f => ({ ...f, color }))}
-                      className={`w-8 h-8 rounded-full transition-transform ${form.color === color ? 'scale-110 ring-2 ring-offset-2 ring-blush-400' : ''}`}
+                      className={`w-8 h-8 rounded-full transition-all duration-150 ${form.color === color ? 'scale-110 ring-2 ring-offset-2 ring-blush-400' : 'hover:scale-105'}`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
@@ -362,9 +370,9 @@ export default function GoalsView() {
               </div>
             </div>
             <div className="flex gap-3 p-6 pt-0">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm font-medium">Cancel</button>
-              <button onClick={saveGoal} disabled={saving || !form.title.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium">
-                {saving ? 'Saving…' : editGoal ? 'Save' : 'Create Goal'}
+              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm font-medium hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors">Cancel</button>
+              <button onClick={saveGoal} disabled={saving || !form.title.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium transition-colors">
+                {saving ? 'Saving...' : editGoal ? 'Save' : 'Create Goal'}
               </button>
             </div>
           </div>

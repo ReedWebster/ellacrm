@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Plus,
   Circle,
@@ -22,6 +22,109 @@ const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; bg: stri
 
 type FilterType = 'all' | 'pending' | 'completed' | Priority
 
+/* ── Swipeable todo item ─────────────────────────────────────────────────── */
+function TodoItem({
+  todo, onToggle, onDelete,
+}: {
+  todo: Todo; onToggle: (t: Todo) => void; onDelete: (id: string) => void
+}) {
+  const pc = PRIORITY_CONFIG[todo.priority]
+  const overdue = todo.due_date && !todo.completed && new Date(todo.due_date) < new Date()
+
+  const itemRef = useRef<HTMLDivElement>(null)
+  const [swipeX, setSwipeX] = useState(0)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const [swiping, setSwiping] = useState(false)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return
+    const dx = e.touches[0].clientX - touchStartRef.current.x
+    const dy = Math.abs(e.touches[0].clientY - touchStartRef.current.y)
+    if (dy > 20 && !swiping) { touchStartRef.current = null; return }
+    if (Math.abs(dx) > 10) setSwiping(true)
+    if (swiping) setSwipeX(dx)
+  }
+  const handleTouchEnd = () => {
+    if (swipeX > 80) onToggle(todo)
+    else if (swipeX < -80) onDelete(todo.id)
+    setSwipeX(0)
+    setSwiping(false)
+    touchStartRef.current = null
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Swipe backgrounds */}
+      <div className="absolute inset-0 flex">
+        <div className="flex-1 bg-emerald-500 flex items-center pl-5">
+          <CheckCircle2 size={18} className="text-white" />
+        </div>
+        <div className="flex-1 bg-rose-500 flex items-center justify-end pr-5">
+          <Trash2 size={18} className="text-white" />
+        </div>
+      </div>
+
+      <div
+        ref={itemRef}
+        className={`relative bg-white dark:bg-mauve-800 border ${
+          overdue && !todo.completed
+            ? 'border-rose-200 dark:border-rose-800'
+            : 'border-blush-100 dark:border-mauve-700'
+        } rounded-xl p-4 flex items-start gap-3 group transition-all hover:shadow-card-md hover:-translate-y-px dark:card-glow`}
+        style={{ transform: `translateX(${swipeX}px)`, transition: swiping ? 'none' : 'transform 0.3s ease' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <button
+          onClick={() => onToggle(todo)}
+          className="mt-0.5 flex-shrink-0 transition-all"
+        >
+          {todo.completed
+            ? <CheckCircle2 size={18} className="text-emerald-500 animate-check-pop" />
+            : <Circle size={18} className="text-mauve-300 hover:text-blush-400 transition-colors" />
+          }
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium ${todo.completed ? 'line-through text-mauve-400' : 'text-plum-800 dark:text-mauve-100'}`}>
+            {todo.title}
+          </p>
+          {todo.description && (
+            <p className="text-xs text-mauve-400 mt-0.5">{todo.description}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${pc.bg} ${pc.color}`}>
+              <Flag size={9} />{pc.label}
+            </span>
+            {todo.due_date && (
+              <span className={`text-xs flex items-center gap-1 ${overdue && !todo.completed ? 'text-rose-500 font-medium' : 'text-mauve-400'}`}>
+                <Calendar size={11} />
+                {new Date(todo.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {overdue && !todo.completed && ' · overdue'}
+              </span>
+            )}
+            {todo.tags?.map(tag => (
+              <span key={tag} className="text-xs text-blush-500 flex items-center gap-0.5">
+                <Tag size={9} />{tag}
+              </span>
+            ))}
+          </div>
+        </div>
+        <button
+          onClick={() => onDelete(todo.id)}
+          className="p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-mauve-400 hover:text-rose-500 transition-all flex-shrink-0"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* ── Main view ───────────────────────────────────────────────────────────── */
 export default function TodosView() {
   const [todos, setTodos] = useState<Todo[]>([])
   const [filter, setFilter] = useState<FilterType>('pending')
@@ -94,22 +197,19 @@ export default function TodosView() {
   const pendingCount = todos.filter(t => !t.completed).length
   const completedCount = todos.filter(t => t.completed).length
 
-  const isOverdue = (todo: Todo) =>
-    todo.due_date && !todo.completed && new Date(todo.due_date) < new Date()
-
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="max-w-2xl mx-auto space-y-5">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white dark:bg-mauve-800 rounded-xl border border-blush-100 dark:border-mauve-700 p-3 text-center">
+        <div className="bg-white dark:bg-mauve-800 rounded-xl border border-blush-100 dark:border-mauve-700 p-3 text-center card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md hover:-translate-y-px">
           <p className="text-xl font-bold text-plum-800 dark:text-mauve-100">{pendingCount}</p>
           <p className="text-xs text-mauve-400">Pending</p>
         </div>
-        <div className="bg-white dark:bg-mauve-800 rounded-xl border border-blush-100 dark:border-mauve-700 p-3 text-center">
-          <p className="text-xl font-bold text-plum-800 dark:text-mauve-100">{todos.filter(t => !t.completed && t.priority === 'high').length}</p>
+        <div className="bg-white dark:bg-mauve-800 rounded-xl border border-blush-100 dark:border-mauve-700 p-3 text-center card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md hover:-translate-y-px">
+          <p className="text-xl font-bold text-rose-500">{todos.filter(t => !t.completed && t.priority === 'high').length}</p>
           <p className="text-xs text-mauve-400">High Priority</p>
         </div>
-        <div className="bg-white dark:bg-mauve-800 rounded-xl border border-blush-100 dark:border-mauve-700 p-3 text-center">
+        <div className="bg-white dark:bg-mauve-800 rounded-xl border border-blush-100 dark:border-mauve-700 p-3 text-center card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md hover:-translate-y-px">
           <p className="text-xl font-bold text-emerald-500">{completedCount}</p>
           <p className="text-xs text-mauve-400">Done</p>
         </div>
@@ -143,77 +243,40 @@ export default function TodosView() {
       </div>
 
       {/* Todo list */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-mauve-400">
-            <CheckCircle2 size={32} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <CheckCircle2 size={24} className="text-emerald-500" />
+            </div>
+            <p className="empty-state-title">
               {filter === 'completed' ? 'No completed tasks' : 'All caught up!'}
             </p>
+            <p className="empty-state-desc">
+              {filter === 'completed' ? 'Complete some tasks and they will appear here' : 'No open tasks right now'}
+            </p>
+            {filter !== 'completed' && (
+              <button onClick={() => setShowForm(true)} className="empty-state-action">
+                <Plus size={16} /> Add a task
+              </button>
+            )}
           </div>
         ) : (
-          filtered.map(todo => {
-            const pc = PRIORITY_CONFIG[todo.priority]
-            const overdue = isOverdue(todo)
-            return (
-              <div
-                key={todo.id}
-                className={`bg-white dark:bg-mauve-800 rounded-xl border ${
-                  overdue && !todo.completed
-                    ? 'border-rose-200 dark:border-rose-800'
-                    : 'border-blush-100 dark:border-mauve-700'
-                } p-4 flex items-start gap-3 group transition-all`}
-              >
-                <button
-                  onClick={() => toggleTodo(todo)}
-                  className="mt-0.5 flex-shrink-0 transition-colors"
-                >
-                  {todo.completed
-                    ? <CheckCircle2 size={18} className="text-blush-500" />
-                    : <Circle size={18} className="text-mauve-300 hover:text-blush-400 transition-colors" />
-                  }
-                </button>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${todo.completed ? 'line-through text-mauve-400' : 'text-plum-800 dark:text-mauve-100'}`}>
-                    {todo.title}
-                  </p>
-                  {todo.description && (
-                    <p className="text-xs text-mauve-400 mt-0.5">{todo.description}</p>
-                  )}
-                  <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${pc.bg} ${pc.color}`}>
-                      <Flag size={9} />{pc.label}
-                    </span>
-                    {todo.due_date && (
-                      <span className={`text-xs flex items-center gap-1 ${overdue && !todo.completed ? 'text-rose-500 font-medium' : 'text-mauve-400'}`}>
-                        <Calendar size={11} />
-                        {new Date(todo.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        {overdue && !todo.completed && ' · overdue'}
-                      </span>
-                    )}
-                    {todo.tags?.map(tag => (
-                      <span key={tag} className="text-xs text-blush-500 flex items-center gap-0.5">
-                        <Tag size={9} />{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  onClick={() => deleteTodo(todo.id)}
-                  className="p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-mauve-400 hover:text-rose-500 transition-all flex-shrink-0"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            )
-          })
+          filtered.map(todo => (
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              onToggle={toggleTodo}
+              onDelete={deleteTodo}
+            />
+          ))
         )}
       </div>
 
       {/* Add task modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-mauve-800 rounded-3xl shadow-xl w-full max-w-md border border-blush-100 dark:border-mauve-700">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-blush-100 dark:border-mauve-700">
               <h3 className="font-semibold text-plum-800 dark:text-mauve-100">New Task</h3>
               <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400">
@@ -245,13 +308,13 @@ export default function TodosView() {
               </div>
               <div>
                 <label className="field-label">Tags (comma-separated)</label>
-                <input className="input-field" placeholder="work, personal, urgent…" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} />
+                <input className="input-field" placeholder="work, personal, urgent..." value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} />
               </div>
             </div>
             <div className="flex gap-3 p-6 pt-0">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm font-medium">Cancel</button>
-              <button onClick={saveTodo} disabled={saving || !form.title.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium">
-                {saving ? 'Saving…' : 'Add Task'}
+              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm font-medium hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors">Cancel</button>
+              <button onClick={saveTodo} disabled={saving || !form.title.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium transition-colors">
+                {saving ? 'Saving...' : 'Add Task'}
               </button>
             </div>
           </div>

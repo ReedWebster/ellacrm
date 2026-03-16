@@ -102,14 +102,14 @@ export default function DocHubView() {
   }, {})
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
+    <div className="max-w-4xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex-1 relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-mauve-400" />
           <input
             className="input-field pl-9"
-            placeholder="Search documents…"
+            placeholder="Search documents..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -125,7 +125,7 @@ export default function DocHubView() {
 
       <div className="grid md:grid-cols-4 gap-4">
         {/* Folder sidebar */}
-        <div className="md:col-span-1 bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden h-fit">
+        <div className="md:col-span-1 bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden h-fit dark:card-glow">
           <div className="px-4 py-3 border-b border-blush-100 dark:border-mauve-700">
             <p className="text-xs font-semibold text-mauve-400 uppercase tracking-wide">Folders</p>
           </div>
@@ -138,7 +138,7 @@ export default function DocHubView() {
             >
               <FolderOpen size={14} />
               All Documents
-              <span className="ml-auto text-xs">{documents.length}</span>
+              <span className="ml-auto text-xs tabular-nums">{documents.length}</span>
             </button>
             {allFolders.map(folder => {
               const count = docsByFolder[folder]?.length || 0
@@ -155,7 +155,7 @@ export default function DocHubView() {
                 >
                   <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
                   <span className="truncate">{folder}</span>
-                  {count > 0 && <span className="ml-auto text-xs">{count}</span>}
+                  {count > 0 && <span className="ml-auto text-xs tabular-nums">{count}</span>}
                 </button>
               )
             })}
@@ -171,7 +171,7 @@ export default function DocHubView() {
                 const color = getFolderColor(folder)
                 const docs = docsByFolder[folder]
                 return (
-                  <div key={folder} className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden">
+                  <div key={folder} className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden dark:card-glow">
                     <button
                       onClick={() => setActiveFolder(folder)}
                       className="w-full flex items-center gap-3 px-5 py-4 border-b border-blush-100 dark:border-mauve-700 hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors"
@@ -192,31 +192,42 @@ export default function DocHubView() {
                 )
               })}
               {allFolders.every(f => !docsByFolder[f]?.length) && (
-                <div className="text-center py-16 text-mauve-400">
-                  <FolderOpen size={40} className="mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">No documents yet</p>
-                  <p className="text-sm mt-1">Add your first document to get organized</p>
+                <div className="empty-state">
+                  <div className="empty-state-icon">
+                    <FolderOpen size={24} className="text-blush-400" />
+                  </div>
+                  <p className="empty-state-title">No documents yet</p>
+                  <p className="empty-state-desc">Add your first document to get organized</p>
+                  <button onClick={() => setShowForm(true)} className="empty-state-action">
+                    <Plus size={16} /> Add a document
+                  </button>
                 </div>
               )}
             </div>
           ) : (
             // List view
-            <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden">
+            <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden dark:card-glow">
               <div className="px-5 py-3 border-b border-blush-100 dark:border-mauve-700 flex items-center justify-between">
                 <p className="text-sm font-semibold text-plum-800 dark:text-mauve-100">
-                  {activeFolder || 'All Documents'} — {filteredDocs.length} result{filteredDocs.length !== 1 ? 's' : ''}
+                  {activeFolder || 'All Documents'} -- {filteredDocs.length} result{filteredDocs.length !== 1 ? 's' : ''}
                 </p>
                 {activeFolder && (
-                  <button onClick={() => setActiveFolder(null)} className="text-xs text-blush-500 hover:text-blush-600">
-                    ← Back
+                  <button onClick={() => setActiveFolder(null)} className="text-xs text-blush-500 hover:text-blush-600 transition-colors">
+                    Back
                   </button>
                 )}
               </div>
-              <div className="p-4 grid grid-cols-2 gap-3">
-                {filteredDocs.map(doc => (
-                  <DocCard key={doc.id} doc={doc} onDelete={deleteDoc} />
-                ))}
-              </div>
+              {filteredDocs.length === 0 ? (
+                <div className="text-center py-12 text-mauve-400">
+                  <p className="text-sm">No documents found</p>
+                </div>
+              ) : (
+                <div className="p-4 grid grid-cols-2 gap-3">
+                  {filteredDocs.map(doc => (
+                    <DocCard key={doc.id} doc={doc} onDelete={deleteDoc} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -224,8 +235,8 @@ export default function DocHubView() {
 
       {/* Add doc modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-mauve-800 rounded-3xl shadow-xl w-full max-w-md border border-blush-100 dark:border-mauve-700">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-blush-100 dark:border-mauve-700">
               <h3 className="font-semibold text-plum-800 dark:text-mauve-100">Add Document</h3>
               <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400"><X size={18} /></button>
@@ -233,7 +244,7 @@ export default function DocHubView() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="field-label">Document Name *</label>
-                <input className="input-field" placeholder="e.g. EIN Certificate, Client Agreement…" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+                <input className="input-field" placeholder="e.g. EIN Certificate, Client Agreement..." value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -244,22 +255,22 @@ export default function DocHubView() {
                 </div>
                 <div>
                   <label className="field-label">File Type</label>
-                  <input className="input-field" placeholder="PDF, DOCX, PNG…" value={form.file_type} onChange={e => setForm(f => ({ ...f, file_type: e.target.value }))} />
+                  <input className="input-field" placeholder="PDF, DOCX, PNG..." value={form.file_type} onChange={e => setForm(f => ({ ...f, file_type: e.target.value }))} />
                 </div>
               </div>
               <div>
                 <label className="field-label">URL / Link (optional)</label>
-                <input className="input-field" type="url" placeholder="https://drive.google.com/…" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
+                <input className="input-field" type="url" placeholder="https://drive.google.com/..." value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
               </div>
               <div>
                 <label className="field-label">Notes</label>
-                <textarea className="input-field resize-none" rows={2} placeholder="Any relevant notes…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+                <textarea className="input-field resize-none" rows={2} placeholder="Any relevant notes..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
             </div>
             <div className="flex gap-3 p-6 pt-0">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm font-medium">Cancel</button>
-              <button onClick={saveDoc} disabled={saving || !form.name.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium">
-                {saving ? 'Saving…' : 'Add Document'}
+              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm font-medium hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors">Cancel</button>
+              <button onClick={saveDoc} disabled={saving || !form.name.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium transition-colors">
+                {saving ? 'Saving...' : 'Add Document'}
               </button>
             </div>
           </div>
@@ -271,7 +282,7 @@ export default function DocHubView() {
 
 function DocCard({ doc, onDelete }: { doc: Document; onDelete: (id: string) => void }) {
   return (
-    <div className="group flex items-start gap-2.5 p-3 rounded-xl border border-blush-100 dark:border-mauve-700 bg-blush-50/50 dark:bg-mauve-700/30 hover:border-blush-300 dark:hover:border-blush-700 transition-colors">
+    <div className="group flex items-start gap-2.5 p-3 rounded-xl border border-blush-100 dark:border-mauve-700 bg-blush-50/50 dark:bg-mauve-700/30 hover:border-blush-300 dark:hover:border-blush-600 hover:shadow-card-md hover:-translate-y-px transition-all duration-200">
       <div className="w-8 h-8 rounded-lg bg-blush-100 dark:bg-mauve-600 flex items-center justify-center flex-shrink-0 mt-0.5">
         {doc.url ? <Link size={14} className="text-blush-500" /> : <FileText size={14} className="text-blush-500" />}
       </div>

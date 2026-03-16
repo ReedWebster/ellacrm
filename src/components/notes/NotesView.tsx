@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, X, Pin, PinOff, Tag, Search, Trash2, Save, ChevronLeft } from 'lucide-react'
+import { Plus, X, Pin, PinOff, Tag, Search, Trash2, Save, ChevronLeft, StickyNote } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import type { Note } from '@/lib/types'
@@ -115,21 +115,21 @@ export default function NotesView() {
   return (
     <div className="flex gap-4 h-[calc(100dvh-8rem)]">
       {/* Sidebar / list panel */}
-      <div className={`${mobileShowEditor ? 'hidden md:flex' : 'flex'} w-full md:w-72 flex-shrink-0 flex-col bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden`}>
+      <div className={`${mobileShowEditor ? 'hidden md:flex' : 'flex'} w-full md:w-72 flex-shrink-0 flex-col bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden dark:card-glow`}>
         {/* Search + New */}
         <div className="p-3 border-b border-blush-100 dark:border-mauve-700 space-y-2">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-mauve-400" />
             <input
               className="input-field pl-8 text-sm"
-              placeholder="Search notes…"
+              placeholder="Search notes..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
           <button
             onClick={() => { setShowNew(true); setActiveNote(null) }}
-            className="w-full flex items-center justify-center gap-2 py-2 bg-blush-500 hover:bg-blush-600 text-white rounded-xl text-sm font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-colors"
             aria-label="New note"
           >
             <Plus size={15} />
@@ -140,20 +140,23 @@ export default function NotesView() {
         {/* Note list */}
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
-            <p className="text-center text-xs text-mauve-400 py-8">No notes found</p>
+            <div className="text-center py-12 text-mauve-400">
+              <StickyNote size={24} className="mx-auto mb-2 opacity-30" />
+              <p className="text-xs">No notes found</p>
+            </div>
           ) : (
             filtered.map(note => (
               <button
                 key={note.id}
                 onClick={() => openNote(note)}
                 className={`w-full text-left p-3 border-b border-blush-50 dark:border-mauve-700/50 hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors group ${
-                  activeNote?.id === note.id ? 'bg-blush-50 dark:bg-mauve-700' : ''
+                  activeNote?.id === note.id ? 'bg-blush-50 dark:bg-mauve-700 border-l-2 border-l-purple-500' : ''
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-1">
-                      {note.pinned && <Pin size={10} className="text-blush-400 flex-shrink-0" />}
+                      {note.pinned && <Pin size={10} className="text-purple-400 flex-shrink-0" />}
                       <p className="text-sm font-medium text-plum-800 dark:text-mauve-100 truncate">{note.title}</p>
                     </div>
                     <p className="text-xs text-mauve-400 truncate mt-0.5">{note.content.substring(0, 60) || 'No content'}</p>
@@ -163,7 +166,7 @@ export default function NotesView() {
                 {note.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {note.tags.slice(0, 3).map(tag => (
-                      <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-blush-100 dark:bg-mauve-600 text-blush-500 dark:text-blush-400">
+                      <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-500 dark:text-purple-400">
                         {tag}
                       </span>
                     ))}
@@ -176,7 +179,7 @@ export default function NotesView() {
       </div>
 
       {/* Editor */}
-      <div className={`${mobileShowEditor ? 'flex' : 'hidden md:flex'} flex-1 bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden flex-col`}>
+      <div className={`${mobileShowEditor ? 'flex' : 'hidden md:flex'} flex-1 bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden flex-col dark:card-glow`}>
         {showNew ? (
           <div className="flex-1 flex flex-col p-6 space-y-4">
             <div className="flex items-center justify-between">
@@ -192,7 +195,7 @@ export default function NotesView() {
             </div>
             <input
               className="text-xl font-semibold bg-transparent border-0 outline-none text-plum-800 dark:text-mauve-100 placeholder-mauve-300 dark:placeholder-mauve-600"
-              placeholder="Note title…"
+              placeholder="Note title..."
               value={newForm.title}
               onChange={e => setNewForm(f => ({ ...f, title: e.target.value }))}
               autoFocus
@@ -201,21 +204,21 @@ export default function NotesView() {
               <Tag size={12} className="text-mauve-400" />
               <input
                 className="text-sm bg-transparent border-0 outline-none text-mauve-400 placeholder-mauve-300 dark:placeholder-mauve-600 flex-1"
-                placeholder="Tags (comma-separated)…"
+                placeholder="Tags (comma-separated)..."
                 value={newForm.tags}
                 onChange={e => setNewForm(f => ({ ...f, tags: e.target.value }))}
               />
             </div>
             <textarea
               className="flex-1 bg-transparent border-0 outline-none text-sm text-plum-800 dark:text-mauve-100 placeholder-mauve-300 dark:placeholder-mauve-600 resize-none leading-relaxed"
-              placeholder="Start writing…"
+              placeholder="Start writing..."
               value={newForm.content}
               onChange={e => setNewForm(f => ({ ...f, content: e.target.value }))}
             />
             <div className="flex gap-3">
-              <button onClick={() => setShowNew(false)} className="px-4 py-2 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm">Cancel</button>
-              <button onClick={createNote} disabled={saving || !newForm.title.trim()} className="px-4 py-2 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium">
-                {saving ? 'Saving…' : 'Create Note'}
+              <button onClick={() => setShowNew(false)} className="px-4 py-2 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors">Cancel</button>
+              <button onClick={createNote} disabled={saving || !newForm.title.trim()} className="px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-600 disabled:opacity-50 text-white text-sm font-medium transition-colors">
+                {saving ? 'Saving...' : 'Create Note'}
               </button>
             </div>
           </div>
@@ -226,7 +229,7 @@ export default function NotesView() {
                 <button onClick={() => setActiveNote(null)} className="md:hidden p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400">
                   <ChevronLeft size={18} />
                 </button>
-                <button onClick={() => togglePin(activeNote)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400 hover:text-blush-500">
+                <button onClick={() => togglePin(activeNote)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400 hover:text-purple-500 transition-colors">
                   {activeNote.pinned ? <PinOff size={16} /> : <Pin size={16} />}
                 </button>
                 <span className="text-xs text-mauve-400 hidden sm:block">
@@ -238,13 +241,13 @@ export default function NotesView() {
                   <button
                     onClick={saveActiveNote}
                     disabled={saving}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blush-500 hover:bg-blush-600 text-white text-xs font-medium transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium transition-colors"
                   >
                     <Save size={12} />
-                    {saving ? 'Saving…' : 'Save'}
+                    {saving ? 'Saving...' : 'Save'}
                   </button>
                 )}
-                <button onClick={() => deleteNote(activeNote.id)} className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-mauve-400 hover:text-rose-500">
+                <button onClick={() => deleteNote(activeNote.id)} className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-mauve-400 hover:text-rose-500 transition-colors">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -254,13 +257,13 @@ export default function NotesView() {
                 className="text-2xl font-semibold bg-transparent border-0 outline-none text-plum-800 dark:text-mauve-100 placeholder-mauve-300"
                 value={editTitle}
                 onChange={e => { setEditTitle(e.target.value); setDirty(true) }}
-                placeholder="Note title…"
+                placeholder="Note title..."
               />
               <div className="flex items-center gap-1.5">
                 <Tag size={12} className="text-mauve-400" />
                 <input
                   className="text-sm bg-transparent border-0 outline-none text-mauve-400 placeholder-mauve-300 flex-1"
-                  placeholder="Tags (comma-separated)…"
+                  placeholder="Tags (comma-separated)..."
                   value={editTags}
                   onChange={e => { setEditTags(e.target.value); setDirty(true) }}
                 />
@@ -269,15 +272,17 @@ export default function NotesView() {
                 className="flex-1 min-h-[300px] bg-transparent border-0 outline-none text-sm text-plum-800 dark:text-mauve-200 placeholder-mauve-300 resize-none leading-relaxed font-mono"
                 value={editContent}
                 onChange={e => { setEditContent(e.target.value); setDirty(true) }}
-                placeholder="Start writing… (supports Markdown)"
+                placeholder="Start writing... (supports Markdown)"
               />
             </div>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-center text-mauve-400">
             <div>
-              <Pin size={40} className="mx-auto mb-3 opacity-20" />
-              <p className="font-medium">Select a note to edit</p>
+              <div className="mx-auto mb-4 w-16 h-16 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <StickyNote size={24} className="text-purple-400" />
+              </div>
+              <p className="font-semibold text-plum-800 dark:text-mauve-100">Select a note to edit</p>
               <p className="text-sm mt-1">or create a new one</p>
             </div>
           </div>

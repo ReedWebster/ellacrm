@@ -57,15 +57,19 @@ export default function TopNav({ activeView, onToggleSidebar }: TopNavProps) {
       </button>
 
       <div className="flex-1 min-w-0">
-        <h1 className="font-semibold text-[15px] text-plum-800 dark:text-white tracking-tight leading-none">
-          {VIEW_TITLES[activeView]}
-        </h1>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] text-mauve-400 dark:text-mauve-500 font-medium hidden sm:inline">Bloom</span>
+          <span className="text-mauve-300 dark:text-mauve-600 hidden sm:inline">/</span>
+          <h1 className="font-semibold text-[15px] text-plum-800 dark:text-white tracking-tight leading-none">
+            {VIEW_TITLES[activeView]}
+          </h1>
+        </div>
         <p className="text-[11px] text-mauve-400 dark:text-mauve-500 mt-0.5 hidden sm:block">{today}</p>
       </div>
 
       <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blush-50 dark:bg-mauve-800 border border-black/[0.05] dark:border-white/[0.05] text-mauve-400 cursor-pointer hover:bg-blush-100 dark:hover:bg-mauve-700 transition-colors">
         <Search size={13} strokeWidth={1.8} />
-        <span className="text-[12px] text-mauve-400">Search…</span>
+        <span className="text-[12px] text-mauve-400">Search...</span>
       </div>
 
       {/* Avatar + dropdown */}

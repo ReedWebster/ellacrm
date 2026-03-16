@@ -128,18 +128,20 @@ export default function HabitsView() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
-      {/* Header stats */}
-      <div className="bg-gradient-to-br from-blush-400 to-rose-600 rounded-2xl p-5 text-white">
-        <div className="flex items-center justify-between">
+      {/* Header stats — warm orange accent */}
+      <div className="relative bg-gradient-to-br from-orange-400 via-amber-500 to-rose-500 dark:from-orange-600 dark:via-amber-600 dark:to-rose-600 rounded-2xl p-5 text-white overflow-hidden">
+        <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/[0.06]" />
+        <div className="absolute -bottom-8 -left-4 w-32 h-32 rounded-full bg-white/[0.04]" />
+        <div className="relative flex items-center justify-between">
           <div>
             <p className="text-sm font-medium opacity-80">Today's Progress</p>
             <p className="text-3xl font-bold mt-1">{todayCompletedCount} / {habits.length}</p>
             <p className="text-sm opacity-70">habits completed</p>
           </div>
-          <Flame size={48} className="opacity-30" />
+          <Flame size={48} className="opacity-20" />
         </div>
         {habits.length > 0 && (
-          <div className="mt-4 h-2 bg-white/20 rounded-full overflow-hidden">
+          <div className="relative mt-4 h-2 bg-white/20 rounded-full overflow-hidden">
             <div
               className="h-full bg-white/70 rounded-full transition-all duration-500"
               style={{ width: `${habits.length ? (todayCompletedCount / habits.length) * 100 : 0}%` }}
@@ -149,7 +151,7 @@ export default function HabitsView() {
       </div>
 
       {/* Habit list with 7-day grid */}
-      <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden">
+      <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden dark:card-glow">
         {/* Header row */}
         <div className="flex items-center px-5 py-3 border-b border-blush-100 dark:border-mauve-700">
           <div className="flex-1">
@@ -161,7 +163,7 @@ export default function HabitsView() {
               <div
                 key={i}
                 className={`w-8 text-center text-xs font-medium ${
-                  dateStr(day) === todayStr ? 'text-blush-500' : 'text-mauve-400'
+                  dateStr(day) === todayStr ? 'text-orange-500' : 'text-mauve-400'
                 }`}
               >
                 <div>{DAYS_LABELS[day.getDay()]}</div>
@@ -175,10 +177,18 @@ export default function HabitsView() {
         </div>
 
         {habits.length === 0 ? (
-          <div className="text-center py-12 text-mauve-400">
-            <Flame size={32} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No habits tracked yet</p>
-            <p className="text-sm mt-1">Add your first habit below</p>
+          <div className="empty-state py-12">
+            <div className="empty-state-icon">
+              <Flame size={24} className="text-orange-400" />
+            </div>
+            <p className="empty-state-title">No habits tracked yet</p>
+            <p className="empty-state-desc">Start building your daily routines</p>
+            <button
+              onClick={() => { setEditHabit(null); setForm({ name: '', description: '', color: HABIT_COLORS[0] }); setShowForm(true) }}
+              className="empty-state-action"
+            >
+              <Plus size={16} /> Add your first habit
+            </button>
           </div>
         ) : (
           habits.map(habit => {
@@ -186,7 +196,7 @@ export default function HabitsView() {
             return (
               <div
                 key={habit.id}
-                className="flex items-center px-5 py-3 border-b border-blush-50 dark:border-mauve-700/50 last:border-0 hover:bg-blush-50/50 dark:hover:bg-mauve-700/30 group"
+                className="flex items-center px-5 py-3 border-b border-blush-50 dark:border-mauve-700/50 last:border-0 hover:bg-blush-50/50 dark:hover:bg-mauve-700/30 group transition-colors"
               >
                 {/* Drag handle — desktop only */}
                 <GripVertical size={14} className="hidden md:block text-mauve-300 dark:text-mauve-600 mr-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
@@ -207,13 +217,14 @@ export default function HabitsView() {
                       <button
                         key={i}
                         onClick={() => toggleDay(habit.id, ds)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150 ${
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
                           done
-                            ? 'bg-blush-500 text-white'
+                            ? 'text-white animate-check-pop'
                             : isToday
-                            ? 'border-2 border-blush-300 dark:border-blush-700 text-mauve-300'
+                            ? 'border-2 border-orange-300 dark:border-orange-700 text-mauve-300'
                             : 'text-mauve-200 dark:text-mauve-600 hover:text-mauve-400'
                         }`}
+                        style={done ? { backgroundColor: habit.color } : undefined}
                       >
                         {done ? <CheckCircle2 size={16} /> : <Circle size={14} />}
                       </button>
@@ -227,9 +238,10 @@ export default function HabitsView() {
                   return (
                     <button
                       onClick={() => toggleDay(habit.id, todayStr)}
-                      className={`md:hidden w-8 h-8 rounded-full flex items-center justify-center mr-3 transition-all duration-150 ${
-                        done ? 'bg-blush-500 text-white' : 'border-2 border-blush-300 dark:border-blush-700 text-mauve-300'
+                      className={`md:hidden w-8 h-8 rounded-full flex items-center justify-center mr-3 transition-all duration-200 ${
+                        done ? 'text-white animate-check-pop' : 'border-2 border-orange-300 dark:border-orange-700 text-mauve-300'
                       }`}
+                      style={done ? { backgroundColor: habit.color } : undefined}
                     >
                       {done ? <CheckCircle2 size={16} /> : <Circle size={14} />}
                     </button>
@@ -259,21 +271,23 @@ export default function HabitsView() {
         )}
 
         {/* Add habit button */}
-        <div className="px-5 py-3 border-t border-blush-100 dark:border-mauve-700">
-          <button
-            onClick={() => { setEditHabit(null); setForm({ name: '', description: '', color: HABIT_COLORS[habits.length % HABIT_COLORS.length] }); setShowForm(true) }}
-            className="flex items-center gap-2 text-sm text-blush-500 hover:text-blush-600 font-medium transition-colors"
-          >
-            <Plus size={16} />
-            Add new habit
-          </button>
-        </div>
+        {habits.length > 0 && (
+          <div className="px-5 py-3 border-t border-blush-100 dark:border-mauve-700">
+            <button
+              onClick={() => { setEditHabit(null); setForm({ name: '', description: '', color: HABIT_COLORS[habits.length % HABIT_COLORS.length] }); setShowForm(true) }}
+              className="flex items-center gap-2 text-sm text-orange-500 hover:text-orange-600 font-medium transition-colors"
+            >
+              <Plus size={16} />
+              Add new habit
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Form modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-mauve-800 rounded-3xl shadow-xl w-full max-w-sm border border-blush-100 dark:border-mauve-700">
+        <div className="modal-overlay">
+          <div className="modal-panel max-w-sm">
             <div className="flex items-center justify-between p-6 border-b border-blush-100 dark:border-mauve-700">
               <h3 className="font-semibold text-plum-800 dark:text-mauve-100">{editHabit ? 'Edit Habit' : 'New Habit'}</h3>
               <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-blush-50 dark:hover:bg-mauve-700 text-mauve-400">
@@ -283,7 +297,7 @@ export default function HabitsView() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="field-label">Habit Name *</label>
-                <input className="input-field" placeholder="e.g. Morning workout, Journaling…" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+                <input className="input-field" placeholder="e.g. Morning workout, Journaling..." value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
               </div>
               <div>
                 <label className="field-label">Description (optional)</label>
@@ -296,7 +310,7 @@ export default function HabitsView() {
                     <button
                       key={color}
                       onClick={() => setForm(f => ({ ...f, color }))}
-                      className={`w-8 h-8 rounded-full transition-transform ${form.color === color ? 'scale-110 ring-2 ring-offset-2 ring-blush-400' : ''}`}
+                      className={`w-8 h-8 rounded-full transition-all duration-150 ${form.color === color ? 'scale-110 ring-2 ring-offset-2 ring-blush-400' : 'hover:scale-105'}`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
@@ -304,9 +318,9 @@ export default function HabitsView() {
               </div>
             </div>
             <div className="flex gap-3 p-6 pt-0">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm font-medium">Cancel</button>
-              <button onClick={saveHabit} disabled={saving || !form.name.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium">
-                {saving ? 'Saving…' : editHabit ? 'Save' : 'Add Habit'}
+              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-blush-200 dark:border-mauve-600 text-mauve-400 text-sm font-medium hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors">Cancel</button>
+              <button onClick={saveHabit} disabled={saving || !form.name.trim()} className="flex-1 py-2.5 rounded-xl bg-blush-500 hover:bg-blush-600 disabled:opacity-50 text-white text-sm font-medium transition-colors">
+                {saving ? 'Saving...' : editHabit ? 'Save' : 'Add Habit'}
               </button>
             </div>
           </div>
