@@ -11,6 +11,7 @@ import GoalsView from './components/goals/GoalsView'
 import NotesView from './components/notes/NotesView'
 import AcademicsView from './components/academics/AcademicsView'
 import DocHubView from './components/docs/DocHubView'
+import SolitaireView from './components/solitaire/SolitaireView'
 import type { ViewKey } from './lib/types'
 
 function AppContent() {
@@ -37,6 +38,7 @@ function AppContent() {
       case 'notes':     return <NotesView />
       case 'academics': return <AcademicsView />
       case 'docs':      return <DocHubView />
+      case 'solitaire': return <SolitaireView />
       default:          return <DailyBrief />
     }
   }

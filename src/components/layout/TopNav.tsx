@@ -13,6 +13,7 @@ const VIEW_TITLES: Record<ViewKey, string> = {
   notes:     'Notes',
   academics: 'Academics',
   docs:      'Doc Hub',
+  solitaire: 'Solitaire',
 }
 
 interface TopNavProps {

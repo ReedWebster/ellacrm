@@ -154,3 +154,4 @@ export type ViewKey =
   | 'notes'
   | 'academics'
   | 'docs'
+  | 'solitaire'

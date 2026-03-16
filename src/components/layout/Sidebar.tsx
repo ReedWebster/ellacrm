@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Flame,
   Flower2,
+  Gamepad2,
 } from 'lucide-react'
 import type { ViewKey } from '@/lib/types'
 
@@ -44,6 +45,12 @@ const NAV_SECTIONS: NavSection[] = [
       { key: 'notes',     label: 'Notes',        icon: StickyNote },
       { key: 'academics', label: 'Academics',    icon: GraduationCap },
       { key: 'docs',      label: 'Doc Hub',      icon: FolderOpen },
+    ],
+  },
+  {
+    title: 'Play',
+    items: [
+      { key: 'solitaire', label: 'Solitaire',    icon: Gamepad2 },
     ],
   },
 ]
