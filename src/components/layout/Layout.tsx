@@ -10,7 +10,7 @@ interface LayoutProps {
   children: React.ReactNode
 }
 
-const VIEW_ORDER: ViewKey[] = ['dashboard', 'calendar', 'habits', 'todos', 'goals', 'notes', 'academics', 'docs']
+const VIEW_ORDER: ViewKey[] = ['dashboard', 'calendar', 'habits', 'todos', 'goals', 'notes', 'academics', 'docs', 'solitaire']
 
 export default function Layout({ activeView, onNavigate, children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)

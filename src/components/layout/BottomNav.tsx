@@ -8,6 +8,7 @@ import {
   GraduationCap,
   FolderOpen,
   Flame,
+  Gamepad2,
   MoreHorizontal,
   X,
 } from 'lucide-react'
@@ -22,9 +23,10 @@ const PRIMARY_ITEMS = [
 ]
 
 const MORE_ITEMS = [
-  { key: 'notes'     as ViewKey, label: 'Notes',    icon: StickyNote },
-  { key: 'academics' as ViewKey, label: 'School',   icon: GraduationCap },
-  { key: 'docs'      as ViewKey, label: 'Docs',     icon: FolderOpen },
+  { key: 'notes'     as ViewKey, label: 'Notes',      icon: StickyNote },
+  { key: 'academics' as ViewKey, label: 'School',     icon: GraduationCap },
+  { key: 'docs'      as ViewKey, label: 'Docs',       icon: FolderOpen },
+  { key: 'solitaire' as ViewKey, label: 'Solitaire',  icon: Gamepad2 },
 ]
 
 interface Props {
