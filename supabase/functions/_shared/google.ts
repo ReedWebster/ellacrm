@@ -14,6 +14,29 @@ export const SERVICE_ROLE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 export const CALLBACK_URI = `${SUPABASE_URL}/functions/v1/google-oauth-callback`
 export const WEBHOOK_URI  = `${SUPABASE_URL}/functions/v1/google-calendar-webhook`
 
+// Curated vibrant palette for calendar default colors. Indexed by hash of
+// calendar id so each calendar lands on a distinct, scannable hue.
+export const CALENDAR_PALETTE = [
+  '#ef4444', // red
+  '#f97316', // orange
+  '#eab308', // yellow
+  '#84cc16', // lime
+  '#22c55e', // green
+  '#10b981', // emerald
+  '#14b8a6', // teal
+  '#06b6d4', // cyan
+  '#3b82f6', // blue
+  '#8b5cf6', // violet
+  '#d946ef', // fuchsia
+  '#ec4899', // pink
+]
+
+export function paletteColorFor(seed: string): string {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+  return CALENDAR_PALETTE[h % CALENDAR_PALETTE.length]
+}
+
 export const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar.calendarlist.readonly',

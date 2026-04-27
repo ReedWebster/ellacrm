@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Pencil } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { MiniMonth } from './MiniMonth'
 import {
   listSubscriptions,
   updateSubscriptionVisibility,
@@ -17,9 +18,12 @@ const COLOR_PRESETS = [
 
 interface Props {
   onChange?: (subs: CalendarSubscription[]) => void
+  selectedDate: Date
+  onSelectDate: (d: Date) => void
+  onAddEvent: () => void
 }
 
-export function CalendarSidebar({ onChange }: Props) {
+export function CalendarSidebar({ onChange, selectedDate, onSelectDate, onAddEvent }: Props) {
   const [subs, setSubs] = useState<CalendarSubscription[]>([])
   const [editing, setEditing] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
@@ -70,10 +74,21 @@ export function CalendarSidebar({ onChange }: Props) {
     setEditing(null); setEditName('')
   }
 
-  if (subs.length === 0) return null
-
   return (
-    <aside className="w-[220px] flex-shrink-0 hidden lg:block">
+    <aside className="w-[240px] flex-shrink-0 hidden lg:flex flex-col gap-3">
+      <button
+        onClick={onAddEvent}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blush-500 hover:bg-blush-600 text-white text-[13px] font-semibold rounded-2xl shadow-card transition-colors"
+      >
+        <Plus size={15} strokeWidth={2.5} />
+        New Event
+      </button>
+
+      <div className="bg-white dark:bg-ink-800 rounded-2xl border border-linen-200 dark:border-ink-700 overflow-hidden">
+        <MiniMonth selected={selectedDate} onSelect={onSelectDate} />
+      </div>
+
+      {subs.length === 0 ? null : (
       <div className="bg-white dark:bg-ink-800 rounded-2xl border border-linen-200 dark:border-ink-700 overflow-hidden">
         <div className="px-4 py-3 border-b border-linen-200 dark:border-ink-700">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-linen-400 dark:text-ink-400">
@@ -164,6 +179,7 @@ export function CalendarSidebar({ onChange }: Props) {
           ))}
         </ul>
       </div>
+      )}
     </aside>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Clock, Repeat, GripVertical, Maximize2, Minimize2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Clock, Repeat, GripVertical, Maximize2, Minimize2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { pushToGoogle, repeatFreqToRRule, type CalendarSubscription } from '@/lib/calendarSync'
@@ -45,7 +45,7 @@ function pad(n: number) { return String(n).padStart(2, '0') }
 function hourLabel(h: number): string {
   if (h === 0)  return '12 AM'
   if (h === 12) return '12 PM'
-  return String(h < 12 ? h : h - 12)
+  return `${h < 12 ? h : h - 12} ${h < 12 ? 'AM' : 'PM'}`
 }
 
 function formatTime(h: number, m: number): string {
@@ -159,6 +159,15 @@ export default function CalendarView() {
     () => blocks.filter(b => !b.calendar_external_id || !hiddenCalendars.has(b.calendar_external_id)),
     [blocks, hiddenCalendars],
   )
+
+  // Event color sourced from the calendar subscription so editing a calendar's
+  // color in the sidebar instantly recolors all its events.
+  const subColorByCalId = useMemo(
+    () => Object.fromEntries(subs.map(s => [s.external_id, s.color])),
+    [subs],
+  )
+  const colorOf = (b: TimeBlock) =>
+    (b.calendar_external_id && subColorByCalId[b.calendar_external_id]) || b.color
 
   // Fullscreen mode for focused planning — covers the entire viewport
   const [fullscreen, setFullscreen] = useState(false)
@@ -542,7 +551,7 @@ export default function CalendarView() {
                     <div
                       key={b.id}
                       className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-white text-[11px] leading-tight truncate cursor-pointer"
-                      style={{ backgroundColor: b.color }}
+                      style={{ backgroundColor: colorOf(b) }}
                       onClick={e => { e.stopPropagation(); openEdit(b) }}
                     >
                       <span className="truncate font-medium">{b.title}</span>
@@ -732,7 +741,7 @@ export default function CalendarView() {
                         data-event="1"
                         className={`absolute left-px right-px rounded-xl overflow-hidden cursor-grab active:cursor-grabbing group transition-shadow
                           ${moving ? 'shadow-lg ring-2 ring-blush-400/50 opacity-90 z-30' : ''}`}
-                        style={{ top: `${topPx + 1}px`, height: `${hPx - 2}px`, backgroundColor: block.color, zIndex: moving ? 30 : 5 }}
+                        style={{ top: `${topPx + 1}px`, height: `${hPx - 2}px`, backgroundColor: colorOf(block), zIndex: moving ? 30 : 5 }}
                         onMouseDown={e => {
                           e.preventDefault()
                           e.stopPropagation()
@@ -793,31 +802,26 @@ export default function CalendarView() {
       ? 'fixed inset-0 z-50 bg-linen-50 dark:bg-ink-900 p-4 flex flex-col'
       : 'flex flex-col h-[calc(100dvh-8rem)]'
     }>
-      {/* Toolbar */}
+      {/* Toolbar — left: navigation + title; right: view + tools */}
       <div className="flex items-center gap-1.5 mb-3 flex-shrink-0 flex-wrap">
-        <button
-          onClick={() => { setEditingBlock(null); setForm(defaultForm); setShowForm(true) }}
-          className="w-7 h-7 flex items-center justify-center bg-blush-500 hover:bg-blush-600 text-white rounded-full shadow-sm transition-colors mr-1"
-          title="New event"
-        >
-          <Plus size={15} strokeWidth={2.5} />
-        </button>
-
+        {/* Left group: nav */}
         <button
           onClick={() => setCurrentDate(new Date())}
-          className="px-3 py-1.5 text-[12px] font-medium rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-mauve-500 dark:text-mauve-400 hover:bg-blush-50 dark:hover:bg-mauve-700 transition-colors"
+          className="px-3 py-1.5 text-[12px] font-medium rounded-lg border border-linen-200 dark:border-ink-700 text-linen-600 dark:text-ink-200 hover:bg-linen-100 dark:hover:bg-ink-700 transition-colors"
         >
           Today
         </button>
+        <div className="flex items-center bg-white dark:bg-ink-800 rounded-lg border border-linen-200 dark:border-ink-700 overflow-hidden">
+          <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-linen-100 dark:hover:bg-ink-700 text-linen-500 dark:text-ink-300 transition-colors">
+            <ChevronLeft size={16} strokeWidth={2} />
+          </button>
+          <div className="w-px h-4 bg-linen-200 dark:bg-ink-700" />
+          <button onClick={() => navigate(1)} className="p-1.5 hover:bg-linen-100 dark:hover:bg-ink-700 text-linen-500 dark:text-ink-300 transition-colors">
+            <ChevronRight size={16} strokeWidth={2} />
+          </button>
+        </div>
 
-        <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-blush-100 dark:hover:bg-mauve-700 text-mauve-400 transition-colors">
-          <ChevronLeft size={16} strokeWidth={2} />
-        </button>
-        <button onClick={() => navigate(1)} className="p-1.5 rounded-lg hover:bg-blush-100 dark:hover:bg-mauve-700 text-mauve-400 transition-colors">
-          <ChevronRight size={16} strokeWidth={2} />
-        </button>
-
-        <h2 className="font-semibold text-[16px] text-plum-800 dark:text-mauve-100 flex-1 ml-1 tracking-tight">
+        <h2 className="font-semibold text-[16px] text-plum-800 dark:text-ink-100 flex-1 ml-2 tracking-tight">
           {getTitle()}
         </h2>
 
@@ -852,7 +856,12 @@ export default function CalendarView() {
 
       {/* Body: sidebar + calendar grid side-by-side on lg, single column otherwise */}
       <div className="flex-1 min-h-0 flex gap-3">
-        <CalendarSidebar onChange={setSubs} />
+        <CalendarSidebar
+          onChange={setSubs}
+          selectedDate={currentDate}
+          onSelectDate={(d) => { setCurrentDate(d); setMode('day') }}
+          onAddEvent={() => { setEditingBlock(null); setForm(defaultForm); setShowForm(true) }}
+        />
         <div className="flex-1 min-h-0 bg-white dark:bg-ink-800 rounded-2xl shadow-card border border-linen-200 dark:border-ink-700 overflow-hidden flex flex-col">
           {mode === 'month' && renderMonth()}
           {mode === 'week'  && renderWeek()}

@@ -6,6 +6,7 @@ import {
   adminClient,
   getValidAccessToken,
   googleToTimeBlock,
+  paletteColorFor,
   userFromAuthHeader,
   WEBHOOK_URI,
   type GoogleEvent,
@@ -75,20 +76,34 @@ async function runSync(
   let totalUpserts = 0
   let totalDeletes = 0
 
-  // Upsert calendar metadata so the sidebar can render names + colors.
-  // Preserve user's local visibility/color overrides via onConflict (only fill defaults).
+  // Calendar metadata sync. Two-step to preserve user overrides:
+  // 1) Insert-if-not-exists with default name + vibrant palette color
+  // 2) For all rows, refresh name + access_role from Google (but NOT color/visibility)
   for (const cal of calendars) {
+    const displayName = cal.summaryOverride ?? cal.summary ?? cal.id
     await supabase
       .from('calendar_subscriptions')
       .upsert({
         user_id: userId,
         external_id: cal.id,
         external_provider: 'google',
-        name: cal.summaryOverride ?? cal.summary ?? cal.id,
-        color: cal.backgroundColor ?? '#4285F4',
+        name: displayName,
+        color: paletteColorFor(cal.id),
         is_primary: !!cal.primary,
         access_role: cal.accessRole,
-      }, { onConflict: 'user_id,external_provider,external_id', ignoreDuplicates: false })
+      }, { onConflict: 'user_id,external_provider,external_id', ignoreDuplicates: true })
+
+    // Refresh changed-from-Google fields without touching color/visibility
+    await supabase
+      .from('calendar_subscriptions')
+      .update({
+        name: displayName,
+        access_role: cal.accessRole,
+        is_primary: !!cal.primary,
+      })
+      .eq('user_id', userId)
+      .eq('external_provider', 'google')
+      .eq('external_id', cal.id)
   }
 
   for (const cal of calendars) {
