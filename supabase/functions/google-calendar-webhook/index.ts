@@ -47,7 +47,8 @@ Deno.serve(async (req) => {
         await supabase.from('time_blocks').delete().eq('external_id', ev.id)
         continue
       }
-      const block = googleToTimeBlock(ev, integration.user_id)
+      // Webhook doesn't tell us which calendar; keep existing mapping if present.
+      const block = googleToTimeBlock(ev, integration.user_id, 'primary')
       if (!block) continue
       await supabase.from('time_blocks').upsert(block, { onConflict: 'external_id' })
     }

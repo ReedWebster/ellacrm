@@ -145,6 +145,7 @@ export interface TimeBlock {
   external_id?: string
   external_etag?: string
   external_provider?: string
+  calendar_external_id?: string
   last_synced_at?: string
   user_id?: string
 }

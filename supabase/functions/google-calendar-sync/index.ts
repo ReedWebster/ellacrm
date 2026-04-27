@@ -38,9 +38,12 @@ Deno.serve(async (req) => {
 type CalendarListEntry = {
   id: string
   summary: string
+  summaryOverride?: string
   primary?: boolean
   accessRole?: string
   selected?: boolean
+  backgroundColor?: string
+  foregroundColor?: string
 }
 
 async function listCalendars(accessToken: string): Promise<{ items: CalendarListEntry[]; warning?: string }> {
@@ -71,9 +74,25 @@ async function runSync(
   let totalUpserts = 0
   let totalDeletes = 0
 
+  // Upsert calendar metadata so the sidebar can render names + colors.
+  // Preserve user's local visibility/color overrides via onConflict (only fill defaults).
+  for (const cal of calendars) {
+    await supabase
+      .from('calendar_subscriptions')
+      .upsert({
+        user_id: userId,
+        external_id: cal.id,
+        external_provider: 'google',
+        name: cal.summaryOverride ?? cal.summary ?? cal.id,
+        color: cal.backgroundColor ?? '#4285F4',
+        is_primary: !!cal.primary,
+        access_role: cal.accessRole,
+      }, { onConflict: 'user_id,external_provider,external_id', ignoreDuplicates: false })
+  }
+
   for (const cal of calendars) {
     try {
-      const result = await syncOneCalendar(supabase, userId, accessToken, cal.id, syncTokens[cal.id])
+      const result = await syncOneCalendar(supabase, userId, accessToken, cal.id, cal.backgroundColor, syncTokens[cal.id])
       perCalendar[cal.id] = result
       totalUpserts += result.upserts
       totalDeletes += result.deletes
@@ -107,6 +126,7 @@ async function syncOneCalendar(
   userId: string,
   accessToken: string,
   calendarId: string,
+  calendarColor: string | undefined,
   storedSyncToken: string | undefined,
 ) {
   let pageToken: string | undefined
@@ -167,7 +187,7 @@ async function syncOneCalendar(
         if (count) deletes += count
         continue
       }
-      const block = googleToTimeBlock(ev, userId)
+      const block = googleToTimeBlock(ev, userId, calendarId, calendarColor)
       if (!block) { dropped_unparseable += 1; continue }
       const { error } = await supabase
         .from('time_blocks')

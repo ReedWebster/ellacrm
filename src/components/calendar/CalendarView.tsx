@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Plus, X, Clock, Repeat, GripVertical } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
-import { pushToGoogle } from '@/lib/calendarSync'
+import { pushToGoogle, type CalendarSubscription } from '@/lib/calendarSync'
 import { GoogleConnectCard } from './GoogleConnectCard'
+import { CalendarSidebar } from './CalendarSidebar'
 import type { TimeBlock } from '@/lib/types'
 
 type CalMode = 'month' | 'week' | 'day'
@@ -147,6 +148,17 @@ export default function CalendarView() {
   const colRefs          = useRef<Map<string, { el: HTMLElement; date: Date }>>(new Map())
   const blocksRef        = useRef<TimeBlock[]>([])
   useEffect(() => { blocksRef.current = blocks }, [blocks])
+
+  // Calendar subscription visibility (driven by CalendarSidebar). Hidden = events filtered out.
+  const [subs, setSubs] = useState<CalendarSubscription[]>([])
+  const hiddenCalendars = useMemo(
+    () => new Set(subs.filter(s => !s.visible).map(s => s.external_id)),
+    [subs],
+  )
+  const visibleBlocks = useMemo(
+    () => blocks.filter(b => !b.calendar_external_id || !hiddenCalendars.has(b.calendar_external_id)),
+    [blocks, hiddenCalendars],
+  )
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
 
@@ -451,7 +463,7 @@ export default function CalendarView() {
     if (showForm) { setShowForm(false); setEditingBlock(null) }
   }
 
-  const blocksForDay = (day: Date) => blocks.filter(b => isSameDay(new Date(b.start_time), day))
+  const blocksForDay = (day: Date) => visibleBlocks.filter(b => isSameDay(new Date(b.start_time), day))
 
   // ── Month View ────────────────────────────────────────────────────────────
   const renderMonth = () => {
@@ -757,7 +769,7 @@ export default function CalendarView() {
         <GoogleConnectCard />
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar (above the side-by-side body) */}
       <div className="flex items-center gap-1.5 mb-3 flex-shrink-0 flex-wrap">
         <button
           onClick={() => { setEditingBlock(null); setForm(defaultForm); setShowForm(true) }}
@@ -802,11 +814,14 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Calendar body */}
-      <div className="flex-1 min-h-0 bg-white dark:bg-mauve-800 rounded-2xl shadow-card border border-black/[0.05] dark:border-white/[0.05] overflow-hidden flex flex-col">
-        {mode === 'month' && renderMonth()}
-        {mode === 'week'  && renderWeek()}
-        {mode === 'day'   && renderDay()}
+      {/* Body: sidebar + calendar grid side-by-side on lg, single column otherwise */}
+      <div className="flex-1 min-h-0 flex gap-3">
+        <CalendarSidebar onChange={setSubs} />
+        <div className="flex-1 min-h-0 bg-white dark:bg-ink-800 rounded-2xl shadow-card border border-linen-200 dark:border-ink-700 overflow-hidden flex flex-col">
+          {mode === 'month' && renderMonth()}
+          {mode === 'week'  && renderWeek()}
+          {mode === 'day'   && renderDay()}
+        </div>
       </div>
 
       {/* Add / Edit Event modal */}

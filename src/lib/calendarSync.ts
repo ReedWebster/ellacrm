@@ -1,6 +1,38 @@
 import { supabase } from './supabase'
 import type { TimeBlock } from './types'
 
+export interface CalendarSubscription {
+  id: string
+  external_id: string
+  external_provider: string
+  name: string
+  color: string
+  visible: boolean
+  is_primary: boolean
+  access_role?: string
+}
+
+export async function listSubscriptions(): Promise<CalendarSubscription[]> {
+  const { data } = await supabase
+    .from('calendar_subscriptions')
+    .select('id, external_id, external_provider, name, color, visible, is_primary, access_role')
+    .order('is_primary', { ascending: false })
+    .order('name', { ascending: true })
+  return (data as CalendarSubscription[]) ?? []
+}
+
+export async function updateSubscriptionVisibility(id: string, visible: boolean): Promise<void> {
+  await supabase.from('calendar_subscriptions').update({ visible }).eq('id', id)
+}
+
+export async function updateSubscriptionColor(id: string, color: string): Promise<void> {
+  await supabase.from('calendar_subscriptions').update({ color }).eq('id', id)
+}
+
+export async function renameSubscription(id: string, name: string): Promise<void> {
+  await supabase.from('calendar_subscriptions').update({ name }).eq('id', id)
+}
+
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
 
 async function authHeader(): Promise<Record<string, string>> {

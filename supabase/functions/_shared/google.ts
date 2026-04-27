@@ -143,22 +143,23 @@ export type GoogleEvent = {
   recurrence?: string[]
 }
 
-export function googleToTimeBlock(ev: GoogleEvent, userId: string) {
+export function googleToTimeBlock(ev: GoogleEvent, userId: string, calendarId: string, calendarColor?: string) {
   // All-day events use `date`; timed use `dateTime`. Coerce to ISO timestamps.
   const start = ev.start?.dateTime ?? (ev.start?.date ? `${ev.start.date}T00:00:00Z` : null)
   const end   = ev.end?.dateTime   ?? (ev.end?.date   ? `${ev.end.date}T23:59:59Z`   : null)
   if (!start || !end) return null
   return {
-    user_id:           userId,
-    title:             ev.summary || '(untitled)',
-    category:          'Google',
-    start_time:        start,
-    end_time:          end,
-    color:             '#4285F4', // Google blue; could map colorId
-    external_id:       ev.id,
-    external_etag:     ev.etag ?? null,
-    external_provider: 'google',
-    last_synced_at:    new Date().toISOString(),
+    user_id:              userId,
+    title:                ev.summary || '(untitled)',
+    category:             'Google',
+    calendar_external_id: calendarId,
+    start_time:           start,
+    end_time:             end,
+    color:                calendarColor ?? '#4285F4',
+    external_id:          ev.id,
+    external_etag:        ev.etag ?? null,
+    external_provider:    'google',
+    last_synced_at:       new Date().toISOString(),
   }
 }
 
