@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Clock, Repeat, GripVertical } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, Clock, Repeat, GripVertical, Maximize2, Minimize2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
 import { pushToGoogle, type CalendarSubscription } from '@/lib/calendarSync'
-import { GoogleConnectCard } from './GoogleConnectCard'
+import { GoogleSyncButton } from './GoogleSyncButton'
 import { CalendarSidebar } from './CalendarSidebar'
 import type { TimeBlock } from '@/lib/types'
 
@@ -159,6 +159,15 @@ export default function CalendarView() {
     () => blocks.filter(b => !b.calendar_external_id || !hiddenCalendars.has(b.calendar_external_id)),
     [blocks, hiddenCalendars],
   )
+
+  // Fullscreen mode for focused planning — covers the entire viewport
+  const [fullscreen, setFullscreen] = useState(false)
+  useEffect(() => {
+    if (!fullscreen) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setFullscreen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [fullscreen])
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
 
@@ -763,13 +772,11 @@ export default function CalendarView() {
 
   // ── Shell ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-[calc(100dvh-8rem)]">
-      {/* Google Calendar integration */}
-      <div className="mb-3 flex-shrink-0">
-        <GoogleConnectCard />
-      </div>
-
-      {/* Toolbar (above the side-by-side body) */}
+    <div className={fullscreen
+      ? 'fixed inset-0 z-50 bg-linen-50 dark:bg-ink-900 p-4 flex flex-col'
+      : 'flex flex-col h-[calc(100dvh-8rem)]'
+    }>
+      {/* Toolbar */}
       <div className="flex items-center gap-1.5 mb-3 flex-shrink-0 flex-wrap">
         <button
           onClick={() => { setEditingBlock(null); setForm(defaultForm); setShowForm(true) }}
@@ -797,7 +804,7 @@ export default function CalendarView() {
           {getTitle()}
         </h2>
 
-        <div className="flex rounded-xl overflow-hidden border border-black/[0.1] dark:border-white/[0.1] text-[12px] font-medium bg-white dark:bg-mauve-800">
+        <div className="flex rounded-xl overflow-hidden border border-linen-200 dark:border-ink-700 text-[12px] font-medium bg-white dark:bg-ink-800">
           {(['day', 'week', 'month'] as CalMode[]).map(m => (
             <button
               key={m}
@@ -805,13 +812,25 @@ export default function CalendarView() {
               className={`px-3.5 py-1.5 capitalize transition-all ${
                 mode === m
                   ? 'bg-blush-500 text-white'
-                  : 'text-mauve-400 hover:bg-blush-50 dark:hover:bg-mauve-700'
+                  : 'text-linen-500 dark:text-ink-300 hover:bg-linen-100 dark:hover:bg-ink-700'
               }`}
             >
               {m}
             </button>
           ))}
         </div>
+
+        {/* Compact Google sync */}
+        <GoogleSyncButton />
+
+        {/* Fullscreen toggle */}
+        <button
+          onClick={() => setFullscreen(f => !f)}
+          className="p-1.5 rounded-lg text-linen-500 dark:text-ink-300 hover:text-plum-800 dark:hover:text-ink-100 hover:bg-linen-100 dark:hover:bg-ink-700 transition-colors"
+          title={fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen calendar'}
+        >
+          {fullscreen ? <Minimize2 size={15} strokeWidth={1.8} /> : <Maximize2 size={15} strokeWidth={1.8} />}
+        </button>
       </div>
 
       {/* Body: sidebar + calendar grid side-by-side on lg, single column otherwise */}
