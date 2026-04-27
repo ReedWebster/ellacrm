@@ -41,6 +41,9 @@ export type SyncResult =
       full_sync: boolean
       calendars?: number
       per_calendar?: Record<string, { upserts: number; deletes: number; full: boolean; error?: string }>
+      granted_scopes?: string | Record<string, unknown>
+      account_email?: string
+      calendar_list_warning?: string
     }
   | { ok: false; status: number; error: string }
 
@@ -58,6 +61,9 @@ export async function syncFromGoogle(): Promise<SyncResult> {
       full_sync: !!data.full_sync,
       calendars: data.calendars,
       per_calendar: data.per_calendar,
+      granted_scopes: data.granted_scopes,
+      account_email: data.account_email,
+      calendar_list_warning: data.calendar_list_warning,
     }
   } catch {
     return { ok: false, status: r.status, error: `non-JSON response: ${text.slice(0, 200)}` }

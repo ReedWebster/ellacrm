@@ -19,6 +19,7 @@ export function GoogleConnectCard() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [details, setDetails] = useState<Record<string, { upserts: number; deletes: number; full: boolean; error?: string }> | null>(null)
+  const [diagnostics, setDiagnostics] = useState<{ scopes?: string | Record<string, unknown>; warning?: string } | null>(null)
 
   async function refresh() {
     setState(await isGoogleConnected())
@@ -45,12 +46,13 @@ export function GoogleConnectCard() {
   }
 
   async function manualSync() {
-    setBusy(true); setMsg(null); setDetails(null)
+    setBusy(true); setMsg(null); setDetails(null); setDiagnostics(null)
     const r = await syncFromGoogle()
     if (r.ok) {
       const calCount = r.calendars ?? '?'
       setMsg(`Synced ${r.upserts} events${r.deletes ? `, removed ${r.deletes}` : ''} across ${calCount} calendar${calCount === 1 ? '' : 's'}.`)
       setDetails(r.per_calendar ?? null)
+      setDiagnostics({ scopes: r.granted_scopes, warning: r.calendar_list_warning })
     } else {
       setMsg(`Sync failed (${r.status}): ${r.error}`)
     }
@@ -143,6 +145,15 @@ export function GoogleConnectCard() {
               </li>
             ))}
           </ul>
+        </details>
+      )}
+      {diagnostics && (
+        <details className="mt-1.5 text-xs">
+          <summary className="cursor-pointer text-linen-500 dark:text-ink-300">Scope diagnostics</summary>
+          <div className="mt-1.5 ml-4 font-mono text-[11px] text-linen-600 dark:text-ink-200 break-all space-y-1">
+            <div><span className="text-linen-400 dark:text-ink-400">scopes:</span> {typeof diagnostics.scopes === 'string' ? diagnostics.scopes : JSON.stringify(diagnostics.scopes)}</div>
+            {diagnostics.warning && <div className="text-rose-500">{diagnostics.warning}</div>}
+          </div>
         </details>
       )}
     </div>

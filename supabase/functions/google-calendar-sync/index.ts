@@ -25,8 +25,11 @@ Deno.serve(async (req) => {
 
   try {
     const { row, accessToken } = await getValidAccessToken(supabase, userId)
+    // Diagnostic: ask Google what scopes this access_token actually has
+    const tokenInfo = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`)
+      .then(r => r.ok ? r.json() : { error: r.status }) as Record<string, unknown>
     const result = await runSync(supabase, userId, row, accessToken)
-    return json(result)
+    return json({ ...result, granted_scopes: tokenInfo.scope ?? tokenInfo, account_email: row.google_email })
   } catch (e) {
     return json({ error: String(e) }, 500)
   }
@@ -40,18 +43,20 @@ type CalendarListEntry = {
   selected?: boolean
 }
 
-async function listCalendars(accessToken: string): Promise<CalendarListEntry[]> {
+async function listCalendars(accessToken: string): Promise<{ items: CalendarListEntry[]; warning?: string }> {
   const r = await fetch(
     'https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader',
     { headers: { Authorization: `Bearer ${accessToken}` } },
   )
   if (!r.ok) {
-    // If scope is missing (older OAuth grant), fall back to primary only
-    if (r.status === 403) return [{ id: 'primary', summary: 'primary' }]
-    throw new Error(`calendarList failed: ${r.status} ${await r.text()}`)
+    const body = await r.text()
+    if (r.status === 403) {
+      return { items: [{ id: 'primary', summary: 'primary' }], warning: `calendarList 403 (scope missing?): ${body}` }
+    }
+    throw new Error(`calendarList failed: ${r.status} ${body}`)
   }
   const data = await r.json() as { items: CalendarListEntry[] }
-  return data.items ?? []
+  return { items: data.items ?? [] }
 }
 
 async function runSync(
@@ -60,7 +65,7 @@ async function runSync(
   row: any,
   accessToken: string,
 ) {
-  const calendars = await listCalendars(accessToken)
+  const { items: calendars, warning } = await listCalendars(accessToken)
   const syncTokens: Record<string, string> = { ...(row.sync_tokens ?? {}) }
   const perCalendar: Record<string, { upserts: number; deletes: number; full: boolean; error?: string }> = {}
   let totalUpserts = 0
@@ -93,6 +98,7 @@ async function runSync(
     full_sync: Object.values(perCalendar).some(c => c.full),
     calendars: calendars.length,
     per_calendar: perCalendar,
+    calendar_list_warning: warning,
   }
 }
 
