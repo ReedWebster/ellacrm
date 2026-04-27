@@ -59,7 +59,7 @@ export default function TopNav({ activeView, onToggleSidebar }: TopNavProps) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-[13px] text-linen-500 dark:text-ink-400 font-medium hidden sm:inline">Bloom</span>
+          <span className="text-[13px] text-linen-500 dark:text-ink-400 font-medium hidden sm:inline">SWAGR</span>
           <span className="text-linen-300 dark:text-ink-600 hidden sm:inline">/</span>
           <h1 className="font-semibold text-[15px] text-plum-800 dark:text-white tracking-tight leading-none">
             {VIEW_TITLES[activeView]}

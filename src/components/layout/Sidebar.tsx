@@ -79,7 +79,7 @@ export default function Sidebar({ activeView, onNavigate, collapsed }: SidebarPr
         </div>
         <div className={`overflow-hidden transition-all duration-300 ${collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 ml-2.5'}`}>
           <span className="font-bold text-[17px] text-plum-800 dark:text-white tracking-[-0.05em] uppercase select-none whitespace-nowrap">
-            BLOOM
+            SWAGR
           </span>
         </div>
       </div>
