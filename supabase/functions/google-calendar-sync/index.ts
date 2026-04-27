@@ -67,7 +67,7 @@ async function runSync(
 ) {
   const { items: calendars, warning } = await listCalendars(accessToken)
   const syncTokens: Record<string, string> = { ...(row.sync_tokens ?? {}) }
-  const perCalendar: Record<string, { upserts: number; deletes: number; full: boolean; error?: string }> = {}
+  const perCalendar: Record<string, Record<string, unknown>> = {}
   let totalUpserts = 0
   let totalDeletes = 0
 
@@ -115,6 +115,11 @@ async function syncOneCalendar(
   let upserts = 0
   let deletes = 0
   let usedFullSync = false
+  let raw_events = 0
+  let dropped_unparseable = 0
+  let cancelled_seen = 0
+  let upsert_errors = 0
+  let sample_event: unknown = null
 
   while (true) {
     const params = new URLSearchParams()
@@ -149,8 +154,12 @@ async function syncOneCalendar(
       nextSyncToken?: string
     }
 
+    raw_events += (data.items ?? []).length
+    if (sample_event === null && data.items?.[0]) sample_event = data.items[0]
+
     for (const ev of data.items ?? []) {
       if (ev.status === 'cancelled') {
+        cancelled_seen += 1
         const { count } = await supabase
           .from('time_blocks')
           .delete({ count: 'exact' })
@@ -159,11 +168,12 @@ async function syncOneCalendar(
         continue
       }
       const block = googleToTimeBlock(ev, userId)
-      if (!block) continue
+      if (!block) { dropped_unparseable += 1; continue }
       const { error } = await supabase
         .from('time_blocks')
         .upsert(block, { onConflict: 'external_id' })
-      if (!error) upserts += 1
+      if (error) upsert_errors += 1
+      else upserts += 1
     }
 
     if (data.nextPageToken) {
@@ -174,7 +184,7 @@ async function syncOneCalendar(
     break
   }
 
-  return { upserts, deletes, full: usedFullSync, nextSyncToken }
+  return { upserts, deletes, full: usedFullSync, nextSyncToken, raw_events, dropped_unparseable, cancelled_seen, upsert_errors, sample_event }
 }
 
 function json(body: unknown, status = 200) {

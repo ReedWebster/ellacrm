@@ -18,7 +18,7 @@ export function GoogleConnectCard() {
   const [state, setState] = useState<{ connected: boolean; email?: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
-  const [details, setDetails] = useState<Record<string, { upserts: number; deletes: number; full: boolean; error?: string }> | null>(null)
+  const [details, setDetails] = useState<Record<string, Record<string, unknown>> | null>(null)
   const [diagnostics, setDiagnostics] = useState<{ scopes?: string | Record<string, unknown>; warning?: string } | null>(null)
 
   async function refresh() {
@@ -134,16 +134,37 @@ export function GoogleConnectCard() {
       {details && Object.keys(details).length > 0 && (
         <details className="mt-2 text-xs">
           <summary className="cursor-pointer text-linen-500 dark:text-ink-300">Per-calendar details</summary>
-          <ul className="mt-1.5 space-y-0.5 ml-4">
-            {Object.entries(details).map(([id, info]) => (
-              <li key={id} className="font-mono text-[11px] text-linen-600 dark:text-ink-200 break-all">
-                <span className="text-linen-400 dark:text-ink-400">{id}:</span>{' '}
-                {info.error
-                  ? <span className="text-rose-500">error: {info.error}</span>
-                  : <>+{info.upserts} -{info.deletes} {info.full ? '(full)' : '(incr)'}</>
-                }
-              </li>
-            ))}
+          <ul className="mt-1.5 space-y-1.5 ml-4">
+            {Object.entries(details).map(([id, info]) => {
+              const upserts = (info.upserts as number) ?? 0
+              const deletes = (info.deletes as number) ?? 0
+              const full = info.full as boolean
+              const raw = info.raw_events as number | undefined
+              const dropped = info.dropped_unparseable as number | undefined
+              const cancelled = info.cancelled_seen as number | undefined
+              const errors = info.upsert_errors as number | undefined
+              const sample = info.sample_event
+              const error = info.error as string | undefined
+              return (
+                <li key={id} className="font-mono text-[11px] text-linen-600 dark:text-ink-200 break-all">
+                  <div><span className="text-linen-400 dark:text-ink-400">{id}:</span></div>
+                  {error
+                    ? <div className="ml-2 text-rose-500">error: {error}</div>
+                    : (
+                      <div className="ml-2">
+                        <div>+{upserts} -{deletes} {full ? '(full)' : '(incr)'}{raw !== undefined && ` | raw=${raw}`}{dropped ? ` dropped=${dropped}` : ''}{cancelled ? ` cancelled=${cancelled}` : ''}{errors ? ` upsertErr=${errors}` : ''}</div>
+                        {sample && (raw ?? 0) > 0 && (
+                          <details className="mt-0.5">
+                            <summary className="cursor-pointer text-linen-400 dark:text-ink-400">sample event</summary>
+                            <pre className="mt-1 text-[10px] whitespace-pre-wrap">{JSON.stringify(sample, null, 2).slice(0, 500)}</pre>
+                          </details>
+                        )}
+                      </div>
+                    )
+                  }
+                </li>
+              )
+            })}
           </ul>
         </details>
       )}

@@ -28,6 +28,9 @@ export function adminClient(): SupabaseClient {
 }
 
 // Build Google's consent-screen URL.
+// `prompt=consent select_account` forces both the account picker and a fresh
+// consent screen, which prevents Google from silently reusing a cached grant
+// when our scope list has changed.
 export function buildAuthUrl(state: string, redirectUri: string): string {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -35,7 +38,7 @@ export function buildAuthUrl(state: string, redirectUri: string): string {
     response_type: 'code',
     scope: SCOPES,
     access_type: 'offline',
-    prompt: 'consent',
+    prompt: 'consent select_account',
     include_granted_scopes: 'true',
     state,
   })

@@ -40,7 +40,7 @@ export type SyncResult =
       deletes: number
       full_sync: boolean
       calendars?: number
-      per_calendar?: Record<string, { upserts: number; deletes: number; full: boolean; error?: string }>
+      per_calendar?: Record<string, Record<string, unknown>>
       granted_scopes?: string | Record<string, unknown>
       account_email?: string
       calendar_list_warning?: string
