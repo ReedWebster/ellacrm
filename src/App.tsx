@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { syncFromGoogle } from './lib/calendarSync'
+import { backfillToGoogle, syncFromGoogle } from './lib/calendarSync'
 import { useAutoSyncGoogle } from './hooks/useAutoSyncGoogle'
 import LoginScreen from './components/auth/LoginScreen'
 import Layout from './components/layout/Layout'
@@ -31,9 +31,12 @@ function AppContent() {
     if (params.has('google_connected')) {
       setOauthBanner({ kind: 'success', text: 'Google Calendar connected. Syncing…' })
       setActiveView('calendar')
-      syncFromGoogle().then(r => {
+      syncFromGoogle().then(async r => {
+        // Pre-existing local events have no external_id — push them up so they appear on Google
+        const back = await backfillToGoogle()
+        const backText = back && back.pushed > 0 ? ` Pushed ${back.pushed} local event${back.pushed === 1 ? '' : 's'} to Google.` : ''
         setOauthBanner(r.ok
-          ? { kind: 'success', text: `Synced ${r.upserts} events from Google.` }
+          ? { kind: 'success', text: `Synced ${r.upserts} events from Google.${backText}` }
           : { kind: 'error', text: `Sync failed (${r.status}): ${r.error}` })
         setTimeout(() => setOauthBanner(null), 8000)
       })

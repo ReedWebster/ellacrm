@@ -12,6 +12,7 @@ export const SERVICE_ROLE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 // Canonical redirect URI used by both start (auth code request) and callback (token exchange).
 // MUST match what's registered in Google Cloud Console exactly.
 export const CALLBACK_URI = `${SUPABASE_URL}/functions/v1/google-oauth-callback`
+export const WEBHOOK_URI  = `${SUPABASE_URL}/functions/v1/google-calendar-webhook`
 
 export const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
@@ -168,11 +169,13 @@ export function timeBlockToGoogle(tb: {
   start_time: string
   end_time: string
   category?: string
+  recurrence?: string[]
 }) {
   return {
     summary: tb.title,
     description: tb.category ? `Bloom: ${tb.category}` : undefined,
     start: { dateTime: new Date(tb.start_time).toISOString() },
     end:   { dateTime: new Date(tb.end_time).toISOString() },
+    recurrence: tb.recurrence,
   }
 }

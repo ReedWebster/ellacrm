@@ -7,6 +7,7 @@ import {
   getValidAccessToken,
   googleToTimeBlock,
   userFromAuthHeader,
+  WEBHOOK_URI,
   type GoogleEvent,
 } from '../_shared/google.ts'
 
@@ -110,6 +111,18 @@ async function runSync(
     })
     .eq('id', row.id)
 
+  // Ensure each calendar has an active push-notification watch
+  // so changes from Google reach us in seconds, not 5-min poll cycles.
+  const watchResults: Record<string, string> = {}
+  for (const cal of calendars) {
+    try {
+      const r = await ensureWatch(supabase, userId, accessToken, cal.id)
+      watchResults[cal.id] = r
+    } catch (e) {
+      watchResults[cal.id] = `error: ${String(e)}`
+    }
+  }
+
   return {
     ok: true,
     upserts: totalUpserts,
@@ -118,7 +131,76 @@ async function runSync(
     calendars: calendars.length,
     per_calendar: perCalendar,
     calendar_list_warning: warning,
+    watches: watchResults,
   }
+}
+
+// Issues a Google Calendar events.watch for the given calendar (if no active watch exists,
+// or the existing one is expiring within 24h). Returns a short status string.
+async function ensureWatch(
+  supabase: ReturnType<typeof adminClient>,
+  userId: string,
+  accessToken: string,
+  calendarId: string,
+): Promise<string> {
+  const { data: existing } = await supabase
+    .from('calendar_watches')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('calendar_external_id', calendarId)
+    .maybeSingle()
+
+  const oneDayMs = 86_400_000
+  if (existing && new Date(existing.expires_at).getTime() - Date.now() > oneDayMs) {
+    return 'still_active'
+  }
+
+  // Channel ids must be globally unique in Google's system; mix UUID + ts.
+  const channelId = crypto.randomUUID()
+  const expirationMs = Date.now() + 7 * oneDayMs // ~7 day max for events
+  const r = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/watch`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: channelId,
+        type: 'web_hook',
+        address: WEBHOOK_URI,
+        expiration: String(expirationMs),
+      }),
+    },
+  )
+  if (!r.ok) {
+    const body = await r.text()
+    return `watch_failed_${r.status}: ${body.slice(0, 120)}`
+  }
+  const data = await r.json() as { id: string; resourceId: string; expiration?: string }
+  const expiresAt = data.expiration
+    ? new Date(parseInt(data.expiration)).toISOString()
+    : new Date(expirationMs).toISOString()
+
+  // Tear down the old watch if any (best-effort)
+  if (existing) {
+    await fetch('https://www.googleapis.com/calendar/v3/channels/stop', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: existing.channel_id, resourceId: existing.resource_id }),
+    }).catch(() => undefined)
+  }
+
+  await supabase
+    .from('calendar_watches')
+    .upsert({
+      user_id: userId,
+      calendar_external_id: calendarId,
+      external_provider: 'google',
+      channel_id: channelId,
+      resource_id: data.resourceId,
+      expires_at: expiresAt,
+    }, { onConflict: 'user_id,external_provider,calendar_external_id' })
+
+  return existing ? 'renewed' : 'created'
 }
 
 async function syncOneCalendar(

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Plus, X, Clock, Repeat, GripVertical, Maximize2, Minimize2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
-import { pushToGoogle, type CalendarSubscription } from '@/lib/calendarSync'
+import { pushToGoogle, repeatFreqToRRule, type CalendarSubscription } from '@/lib/calendarSync'
 import { GoogleSyncButton } from './GoogleSyncButton'
 import { CalendarSidebar } from './CalendarSidebar'
 import type { TimeBlock } from '@/lib/types'
@@ -431,11 +431,28 @@ export default function CalendarView() {
             pushToGoogle({ action: 'create', time_block: inserted as TimeBlock })
           }
         } else {
+          // Recurring series: insert all occurrences locally for instant render,
+          // but push only the FIRST (master) to Google with an RRULE so we don't
+          // create N duplicate events on the Google side.
           const BATCH = 500
-          for (let i = 0; i < rows.length; i += BATCH) {
-            await supabase.from('time_blocks').insert(rows.slice(i, i + BATCH))
+          const firstRow = { ...rows[0] }
+          const restRows = rows.slice(1)
+          const { data: insertedMaster } = await supabase
+            .from('time_blocks')
+            .insert(firstRow)
+            .select()
+            .single()
+          for (let i = 0; i < restRows.length; i += BATCH) {
+            await supabase.from('time_blocks').insert(restRows.slice(i, i + BATCH))
           }
-          // Recurring series — TODO: translate to Google RRULE for proper sync.
+          const rrule = repeatFreqToRRule(form.repeatFreq, form.repeatUntil)
+          if (insertedMaster && rrule) {
+            pushToGoogle({
+              action: 'create',
+              time_block: insertedMaster as TimeBlock,
+              recurrence: [rrule],
+            })
+          }
         }
       }
 
