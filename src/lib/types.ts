@@ -141,6 +141,12 @@ export interface TimeBlock {
   repeat_until?: string
   repeat_id?: string
   created_at: string
+  // Google Calendar sync fields
+  external_id?: string
+  external_etag?: string
+  external_provider?: string
+  last_synced_at?: string
+  user_id?: string
 }
 
 // ─── App Navigation ──────────────────────────────────────────────────────────

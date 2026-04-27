@@ -43,17 +43,17 @@ export default function BottomNav({ activeView, onNavigate }: Props) {
       {/* More menu overlay */}
       {showMore && (
         <div className="fixed inset-0 z-40" onClick={() => setShowMore(false)}>
-          <div className="absolute bottom-[calc(76px+env(safe-area-inset-bottom))] right-4 bg-white dark:bg-mauve-800 rounded-2xl shadow-modal border border-black/[0.06] dark:border-white/[0.05] overflow-hidden animate-menu-in" onClick={e => e.stopPropagation()}>
+          <div className="absolute bottom-[calc(76px+env(safe-area-inset-bottom))] right-4 bg-white dark:bg-ink-800 rounded-2xl shadow-modal border border-black/[0.06] dark:border-white/[0.05] overflow-hidden animate-menu-in" onClick={e => e.stopPropagation()}>
             {MORE_ITEMS.map(({ key, label, icon: Icon }) => {
               const active = activeView === key
               return (
                 <button
                   key={key}
                   onClick={() => { onNavigate(key); setShowMore(false) }}
-                  className={`w-full flex items-center gap-3 px-5 py-3 text-[13px] transition-colors ${
+                  className={`w-full flex items-center gap-3 px-5 py-3 text-[13px] transition-colors border-l-2 ${
                     active
-                      ? 'text-blush-500 bg-blush-50 dark:bg-blush-900/20'
-                      : 'text-plum-800 dark:text-mauve-100 hover:bg-blush-50 dark:hover:bg-mauve-700'
+                      ? 'text-blush-500 border-blush-500'
+                      : 'text-plum-800 dark:text-mauve-100 border-transparent hover:bg-linen-100 dark:hover:bg-ink-700'
                   }`}
                 >
                   <Icon size={16} strokeWidth={active ? 2.2 : 1.6} />
@@ -68,7 +68,7 @@ export default function BottomNav({ activeView, onNavigate }: Props) {
       {/* Floating pill nav */}
       <nav className="
         fixed bottom-3 left-3 right-3 z-40
-        bg-white/95 dark:bg-mauve-800/95 backdrop-blur-xl
+        bg-white/95 dark:bg-ink-800/95 backdrop-blur-xl
         border border-black/[0.08] dark:border-white/[0.06]
         rounded-2xl shadow-modal
         flex items-stretch

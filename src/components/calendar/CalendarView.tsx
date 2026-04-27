@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Plus, X, Clock, Repeat, GripVertical } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
+import { pushToGoogle } from '@/lib/calendarSync'
+import { GoogleConnectCard } from './GoogleConnectCard'
 import type { TimeBlock } from '@/lib/types'
 
 type CalMode = 'month' | 'week' | 'day'
@@ -143,6 +145,8 @@ export default function CalendarView() {
   const movePreviewRef   = useRef<MovePreview | null>(null)
   const scrollRef        = useRef<HTMLDivElement>(null)
   const colRefs          = useRef<Map<string, { el: HTMLElement; date: Date }>>(new Map())
+  const blocksRef        = useRef<TimeBlock[]>([])
+  useEffect(() => { blocksRef.current = blocks }, [blocks])
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
 
@@ -240,6 +244,15 @@ export default function CalendarView() {
             start_time: newStart.toISOString(),
             end_time:   newEnd.toISOString(),
           }).eq('id', mp.blockId)
+          // Push update to Google if this event is synced
+          const original = blocksRef.current.find(b => b.id === mp.blockId)
+          if (original?.external_id) {
+            pushToGoogle({
+              action: 'update',
+              external_id: original.external_id,
+              time_block: { ...original, start_time: newStart.toISOString(), end_time: newEnd.toISOString() },
+            })
+          }
         }
         return
       }
@@ -344,12 +357,30 @@ export default function CalendarView() {
           for (let i = 0; i < extraRows.length; i += BATCH) {
             await supabase.from('time_blocks').insert(extraRows.slice(i, i + BATCH))
           }
+          // Note: recurring series aren't pushed to Google yet (see RRULE TODO).
+          // If the source event was synced, delete it from Google to avoid orphan.
+          if (editingBlock.external_id) {
+            pushToGoogle({ action: 'delete', external_id: editingBlock.external_id })
+          }
         } else {
           // Simple update (single event stays single, or editing one occurrence of a series)
           await supabase.from('time_blocks').update({
             title: form.title, category: form.category, color,
             start_time: startTime, end_time: endTime,
           }).eq('id', editingBlock.id)
+          // Push to Google: update existing or create if not yet synced
+          if (!editingBlock.repeat_id) {
+            const updatedTimeBlock = {
+              ...editingBlock,
+              title: form.title, category: form.category, color,
+              start_time: startTime, end_time: endTime,
+            }
+            if (editingBlock.external_id) {
+              pushToGoogle({ action: 'update', external_id: editingBlock.external_id, time_block: updatedTimeBlock })
+            } else {
+              pushToGoogle({ action: 'create', time_block: updatedTimeBlock })
+            }
+          }
         }
       } else {
         // New event — generate occurrences
@@ -367,10 +398,23 @@ export default function CalendarView() {
             repeat_id:    repeatId ?? null,
           }
         })
-        // Batch insert in chunks to avoid payload limits
-        const BATCH = 500
-        for (let i = 0; i < rows.length; i += BATCH) {
-          await supabase.from('time_blocks').insert(rows.slice(i, i + BATCH))
+        // Batch insert in chunks. For single non-recurring events, capture the
+        // inserted row so we can push it to Google with a known id.
+        if (rows.length === 1) {
+          const { data: inserted } = await supabase
+            .from('time_blocks')
+            .insert(rows[0])
+            .select()
+            .single()
+          if (inserted) {
+            pushToGoogle({ action: 'create', time_block: inserted as TimeBlock })
+          }
+        } else {
+          const BATCH = 500
+          for (let i = 0; i < rows.length; i += BATCH) {
+            await supabase.from('time_blocks').insert(rows.slice(i, i + BATCH))
+          }
+          // Recurring series — TODO: translate to Google RRULE for proper sync.
         }
       }
 
@@ -390,11 +434,18 @@ export default function CalendarView() {
   async function confirmDelete(deleteAll: boolean) {
     if (!deleteConfirm) return
     if (deleteAll && deleteConfirm.repeatId) {
+      // Collect external_ids to delete from Google before removing locally
+      const toUnsync = blocksRef.current
+        .filter(b => b.repeat_id === deleteConfirm.repeatId && b.external_id)
+        .map(b => b.external_id!)
       await supabase.from('time_blocks').delete().eq('repeat_id', deleteConfirm.repeatId)
       setBlocks(prev => prev.filter(b => b.repeat_id !== deleteConfirm.repeatId))
+      for (const eid of toUnsync) pushToGoogle({ action: 'delete', external_id: eid })
     } else {
+      const target = blocksRef.current.find(b => b.id === deleteConfirm.blockId)
       await supabase.from('time_blocks').delete().eq('id', deleteConfirm.blockId)
       setBlocks(prev => prev.filter(b => b.id !== deleteConfirm.blockId))
+      if (target?.external_id) pushToGoogle({ action: 'delete', external_id: target.external_id })
     }
     setDeleteConfirm(null)
     if (showForm) { setShowForm(false); setEditingBlock(null) }
@@ -701,6 +752,11 @@ export default function CalendarView() {
   // ── Shell ──────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[calc(100dvh-8rem)]">
+      {/* Google Calendar integration */}
+      <div className="mb-3 flex-shrink-0">
+        <GoogleConnectCard />
+      </div>
+
       {/* Toolbar */}
       <div className="flex items-center gap-1.5 mb-3 flex-shrink-0 flex-wrap">
         <button

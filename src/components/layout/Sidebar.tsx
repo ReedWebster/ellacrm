@@ -66,8 +66,8 @@ export default function Sidebar({ activeView, onNavigate, collapsed }: SidebarPr
     <aside
       className={`
         flex flex-col h-full
-        bg-white dark:bg-mauve-900
-        border-r border-black/[0.06] dark:border-white/[0.05]
+        bg-white dark:bg-ink-900
+        border-r border-linen-200 dark:border-ink-800
         transition-all duration-300 ease-in-out flex-shrink-0
         ${collapsed ? 'w-[68px]' : 'w-[220px]'}
       `}
@@ -90,12 +90,12 @@ export default function Sidebar({ activeView, onNavigate, collapsed }: SidebarPr
           <div key={section.title} className={si > 0 ? 'mt-4' : ''}>
             {/* Section label */}
             <div className={`overflow-hidden transition-all duration-300 ${collapsed ? 'h-0 opacity-0' : 'h-auto opacity-100'}`}>
-              <p className="px-4 mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-mauve-300 dark:text-mauve-500 select-none">
+              <p className="px-4 mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-linen-400 dark:text-ink-400 select-none">
                 {section.title}
               </p>
             </div>
             {collapsed && si > 0 && (
-              <div className="mx-4 mb-2 h-px bg-black/[0.05] dark:bg-white/[0.05]" />
+              <div className="mx-4 mb-2 h-px bg-linen-200 dark:bg-ink-700" />
             )}
             <ul className="space-y-0.5 px-2">
               {section.items.map(({ key, label, icon: Icon }) => {
@@ -109,15 +109,15 @@ export default function Sidebar({ activeView, onNavigate, collapsed }: SidebarPr
                         relative w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-[10px] text-[13px] font-medium
                         transition-all duration-150 select-none
                         ${active
-                          ? 'bg-blush-100 dark:bg-blush-900/40 text-blush-700 dark:text-blush-300'
-                          : 'text-mauve-500 dark:text-mauve-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] hover:text-plum-800 dark:hover:text-mauve-100'
+                          ? 'text-blush-600 dark:text-blush-300'
+                          : 'text-linen-600 dark:text-ink-300 hover:bg-linen-100 dark:hover:bg-ink-800 hover:text-plum-800 dark:hover:text-ink-100'
                         }
                         ${collapsed ? 'justify-center px-0' : ''}
                       `}
                     >
-                      {/* Active indicator bar */}
+                      {/* Active indicator bar — sole signal */}
                       {active && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full bg-blush-500 dark:bg-blush-400" />
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-blush-500 dark:bg-blush-400" />
                       )}
                       <Icon
                         size={16}
@@ -138,8 +138,8 @@ export default function Sidebar({ activeView, onNavigate, collapsed }: SidebarPr
 
       {/* Footer */}
       <div className={`overflow-hidden transition-all duration-300 ${collapsed ? 'h-0 opacity-0 p-0' : 'h-auto opacity-100 px-4 py-4'}`}>
-        <div className="border-t border-black/[0.05] dark:border-white/[0.05] pt-3">
-          <p className="text-[11px] text-mauve-400 dark:text-mauve-500 select-none">Ella's hub</p>
+        <div className="border-t border-linen-200 dark:border-ink-800 pt-3">
+          <p className="text-[11px] text-linen-500 dark:text-ink-400 select-none">Ella's hub</p>
         </div>
       </div>
     </aside>

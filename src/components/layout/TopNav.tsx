@@ -46,12 +46,12 @@ export default function TopNav({ activeView, onToggleSidebar }: TopNavProps) {
   return (
     <header className="
       h-14 flex items-center gap-3 px-4 flex-shrink-0
-      bg-white/90 dark:bg-mauve-900/90 backdrop-blur-xl
-      border-b border-black/[0.06] dark:border-white/[0.05]
+      bg-white/90 dark:bg-ink-900/90 backdrop-blur-xl
+      border-b border-linen-200 dark:border-ink-800
     ">
       <button
         onClick={onToggleSidebar}
-        className="hidden md:flex p-1.5 rounded-lg text-mauve-400 hover:text-plum-800 dark:hover:text-mauve-100 hover:bg-black/[0.05] dark:hover:bg-white/[0.06] transition-colors flex-shrink-0"
+        className="hidden md:flex p-1.5 rounded-lg text-linen-500 dark:text-ink-300 hover:text-plum-800 dark:hover:text-ink-100 hover:bg-linen-100 dark:hover:bg-ink-800 transition-colors flex-shrink-0"
         aria-label="Toggle sidebar"
       >
         <Menu size={17} strokeWidth={1.8} />
@@ -59,18 +59,18 @@ export default function TopNav({ activeView, onToggleSidebar }: TopNavProps) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-[13px] text-mauve-400 dark:text-mauve-500 font-medium hidden sm:inline">Bloom</span>
-          <span className="text-mauve-300 dark:text-mauve-600 hidden sm:inline">/</span>
+          <span className="text-[13px] text-linen-500 dark:text-ink-400 font-medium hidden sm:inline">Bloom</span>
+          <span className="text-linen-300 dark:text-ink-600 hidden sm:inline">/</span>
           <h1 className="font-semibold text-[15px] text-plum-800 dark:text-white tracking-tight leading-none">
             {VIEW_TITLES[activeView]}
           </h1>
         </div>
-        <p className="text-[11px] text-mauve-400 dark:text-mauve-500 mt-0.5 hidden sm:block">{today}</p>
+        <p className="text-[11px] text-linen-500 dark:text-ink-400 mt-0.5 hidden sm:block">{today}</p>
       </div>
 
-      <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blush-50 dark:bg-mauve-800 border border-black/[0.05] dark:border-white/[0.05] text-mauve-400 cursor-pointer hover:bg-blush-100 dark:hover:bg-mauve-700 transition-colors">
+      <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-linen-100 dark:bg-ink-800 border border-linen-200 dark:border-ink-700 text-linen-500 dark:text-ink-300 cursor-pointer hover:bg-linen-200 dark:hover:bg-ink-700 transition-colors">
         <Search size={13} strokeWidth={1.8} />
-        <span className="text-[12px] text-mauve-400">Search...</span>
+        <span className="text-[12px]">Search...</span>
       </div>
 
       {/* Avatar + dropdown */}

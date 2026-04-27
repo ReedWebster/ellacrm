@@ -43,6 +43,32 @@ export default {
           800: '#2e1828',
           900: '#1a0f18',
         },
+        // Warm near-white neutrals — primary light surfaces
+        linen: {
+          50:  '#fafaf9',
+          100: '#f5f4f2',
+          200: '#ebe9e6',
+          300: '#d6d2cc',
+          400: '#a8a39c',
+          500: '#7a756e',
+          600: '#5a5650',
+          700: '#3f3c37',
+          800: '#26241f',
+          900: '#1a1816',
+        },
+        // True near-black neutrals — primary dark surfaces
+        ink: {
+          50:  '#f4f3f5',
+          100: '#dcd9de',
+          200: '#bab5be',
+          300: '#8b8590',
+          400: '#5e5862',
+          500: '#3f3a44',
+          600: '#2c282f',
+          700: '#1d1a21',
+          800: '#141218',
+          900: '#0b0a0e',
+        },
       },
       fontFamily: {
         sans: [

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useRealtimeSync } from '@/hooks/useRealtimeSync'
+import { PetalCluster } from '@/components/ui/Petal'
 import type { Todo, Habit, HabitCompletion, TimeBlock } from '@/lib/types'
 
 /* ── Mini donut chart ────────────────────────────────────────────────────────── */
@@ -29,29 +30,23 @@ function MiniDonut({ value, max, color, size = 36 }: { value: number; max: numbe
 
 /* ── Stat card ───────────────────────────────────────────────────────────────── */
 function StatCard({
-  label, value, sub, icon: Icon, color, donut,
+  label, value, sub, icon: Icon, donut,
 }: {
-  label: string; value: string | number; sub?: string; icon: React.ElementType; color: string
-  donut?: { value: number; max: number; color: string }
+  label: string; value: string | number; sub?: string; icon: React.ElementType
+  donut: { value: number; max: number; color: string }
 }) {
   return (
-    <div className="bg-white dark:bg-mauve-800 rounded-2xl p-4 border border-blush-100 dark:border-mauve-700 flex items-center gap-4 card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md hover:-translate-y-px">
-      {donut ? (
-        <div className="relative flex-shrink-0">
-          <MiniDonut {...donut} />
-          <div className={`absolute inset-0 flex items-center justify-center`}>
-            <Icon size={14} className="text-white" style={{ color: donut.color }} />
-          </div>
+    <div className="bg-white dark:bg-ink-800 rounded-2xl p-4 border border-linen-200 dark:border-ink-700 flex items-center gap-4 card-hover dark:card-glow transition-all duration-200 hover:shadow-card-md hover:-translate-y-px">
+      <div className="relative flex-shrink-0">
+        <MiniDonut {...donut} />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Icon size={14} style={{ color: donut.color }} />
         </div>
-      ) : (
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
-          <Icon size={20} className="text-white" />
-        </div>
-      )}
+      </div>
       <div className="min-w-0">
-        <p className="text-xs text-mauve-400 dark:text-mauve-400 font-medium">{label}</p>
+        <p className="text-xs text-linen-500 dark:text-ink-300 font-medium">{label}</p>
         <p className="text-xl font-bold text-plum-800 dark:text-mauve-100 leading-tight">{value}</p>
-        {sub && <p className="text-xs text-mauve-400 dark:text-mauve-400 truncate">{sub}</p>}
+        {sub && <p className="text-xs text-linen-500 dark:text-ink-300 truncate">{sub}</p>}
       </div>
     </div>
   )
@@ -60,7 +55,7 @@ function StatCard({
 /* ── Skeleton loaders ────────────────────────────────────────────────────────── */
 function SkeletonHero() {
   return (
-    <div className="rounded-3xl p-6 bg-blush-200 dark:bg-mauve-700 animate-pulse">
+    <div className="rounded-3xl p-6 bg-linen-200 dark:bg-ink-700 animate-pulse">
       <div className="flex items-start justify-between">
         <div className="space-y-3">
           <div className="skeleton h-4 w-24 rounded" />
@@ -76,7 +71,7 @@ function SkeletonHero() {
 
 function SkeletonList({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden">
+    <div className="bg-white dark:bg-ink-800 rounded-2xl border border-linen-200 dark:border-ink-700 overflow-hidden">
       <div className="section-header">
         <div className="skeleton h-4 w-28 rounded" />
       </div>
@@ -243,13 +238,9 @@ export default function DailyBrief() {
       )}
 
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Hero greeting — glassmorphism refinement */}
-        <div className="relative bg-gradient-to-br from-blush-400 via-blush-500 to-plum-500 dark:from-blush-600 dark:via-plum-500 dark:to-plum-700 rounded-3xl p-6 text-white shadow-lg overflow-hidden">
-          {/* Subtle glass overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-transparent pointer-events-none rounded-3xl" />
-          {/* Decorative circles */}
-          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/[0.06]" />
-          <div className="absolute -bottom-12 -left-6 w-40 h-40 rounded-full bg-white/[0.04]" />
+        {/* Hero greeting — flat blush surface with petal flourish */}
+        <div className="bg-blush-500 dark:bg-blush-700 rounded-3xl p-6 text-white shadow-lg overflow-hidden relative">
+          <PetalCluster size={180} opacity={0.1} className="absolute -top-8 -right-8 text-white" />
 
           <div className="relative flex items-start justify-between">
             <div>
@@ -269,7 +260,7 @@ export default function DailyBrief() {
           {/* Habit progress bar */}
           {totalHabits > 0 && (
             <div className="relative mt-4">
-              <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+              <div className="h-1 bg-white/20 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-white/70 rounded-full transition-all duration-500"
                   style={{ width: `${(completedHabitsToday / totalHabits) * 100}%` }}
@@ -291,7 +282,6 @@ export default function DailyBrief() {
             value={todos.length}
             sub="open items"
             icon={CheckCircle2}
-            color="bg-blush-500"
             donut={{ value: todos.filter(t => t.completed).length, max: Math.max(todos.length, 1), color: '#de6690' }}
           />
           <StatCard
@@ -299,7 +289,6 @@ export default function DailyBrief() {
             value={`${completedHabitsToday}/${totalHabits}`}
             sub="done today"
             icon={Flame}
-            color="bg-rose-600"
             donut={{ value: completedHabitsToday, max: Math.max(totalHabits, 1), color: '#e84a72' }}
           />
         </div>
@@ -307,7 +296,7 @@ export default function DailyBrief() {
         {/* Two-column panel */}
         <div className="grid md:grid-cols-2 gap-5">
           {/* Today's habits */}
-          <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden dark:card-glow">
+          <div className="bg-white dark:bg-ink-800 rounded-2xl border border-linen-200 dark:border-ink-700 overflow-hidden dark:card-glow">
             <div className="section-header">
               <div className="section-title">
                 <Flame size={16} className="text-orange-500" />
@@ -333,7 +322,7 @@ export default function DailyBrief() {
                       className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-150 ${
                         done
                           ? 'bg-blush-50 dark:bg-blush-900/20'
-                          : 'hover:bg-blush-50 dark:hover:bg-mauve-700'
+                          : 'hover:bg-linen-100 dark:hover:bg-ink-700'
                       }`}
                     >
                       <div
@@ -346,7 +335,7 @@ export default function DailyBrief() {
                       <span
                         className={`text-sm font-medium transition-all ${
                           done
-                            ? 'text-mauve-400 line-through'
+                            ? 'text-linen-500 dark:text-ink-300 line-through'
                             : 'text-plum-800 dark:text-mauve-100'
                         }`}
                       >
@@ -364,7 +353,7 @@ export default function DailyBrief() {
           </div>
 
           {/* Priority todos */}
-          <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden dark:card-glow">
+          <div className="bg-white dark:bg-ink-800 rounded-2xl border border-linen-200 dark:border-ink-700 overflow-hidden dark:card-glow">
             <div className="section-header">
               <div className="section-title">
                 <Star size={16} className="text-amber-500" />
@@ -391,18 +380,18 @@ export default function DailyBrief() {
                   return (
                     <div
                       key={todo.id}
-                      className="flex items-start gap-3 p-3 rounded-xl hover:bg-blush-50 dark:hover:bg-mauve-700 group transition-colors"
+                      className="flex items-start gap-3 p-3 rounded-xl hover:bg-linen-100 dark:hover:bg-ink-700 group transition-colors"
                     >
                       <button
                         onClick={() => toggleTodo(todo)}
-                        className="mt-0.5 flex-shrink-0 text-mauve-300 hover:text-blush-500 transition-colors"
+                        className="mt-0.5 flex-shrink-0 text-linen-500 dark:text-ink-300 hover:text-blush-500 transition-colors"
                       >
                         <Circle size={16} />
                       </button>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-plum-800 dark:text-mauve-100 truncate">{todo.title}</p>
                         {todo.due_date && (
-                          <p className="text-xs text-mauve-400 flex items-center gap-1 mt-0.5">
+                          <p className="text-xs text-linen-500 dark:text-ink-300 flex items-center gap-1 mt-0.5">
                             <Calendar size={11} />
                             {new Date(todo.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </p>
@@ -426,7 +415,7 @@ export default function DailyBrief() {
 
         {/* Today's Schedule */}
         {todayBlocks.length > 0 && (
-          <div className="bg-white dark:bg-mauve-800 rounded-2xl border border-blush-100 dark:border-mauve-700 overflow-hidden dark:card-glow">
+          <div className="bg-white dark:bg-ink-800 rounded-2xl border border-linen-200 dark:border-ink-700 overflow-hidden dark:card-glow">
             <div className="section-header">
               <div className="section-title">
                 <Clock size={16} className="text-blush-500" />
@@ -434,13 +423,13 @@ export default function DailyBrief() {
               </div>
               <span className="section-count">{todayBlocks.length} event{todayBlocks.length !== 1 ? 's' : ''}</span>
             </div>
-            <div className="divide-y divide-blush-50 dark:divide-mauve-700/50">
+            <div className="divide-y divide-linen-200 dark:divide-ink-700/50">
               {todayBlocks.map(block => (
-                <div key={block.id} className="flex items-center gap-3 px-5 py-3 hover:bg-blush-50/50 dark:hover:bg-mauve-700/30 transition-colors">
+                <div key={block.id} className="flex items-center gap-3 px-5 py-3 hover:bg-linen-50 dark:hover:bg-ink-700/40 transition-colors">
                   <div className="w-1 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: block.color }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-plum-800 dark:text-mauve-100 truncate">{block.title}</p>
-                    <p className="text-xs text-mauve-400 mt-0.5">
+                    <p className="text-xs text-linen-500 dark:text-ink-300 mt-0.5">
                       {fmtTime(block.start_time)} – {fmtTime(block.end_time)}
                     </p>
                   </div>
