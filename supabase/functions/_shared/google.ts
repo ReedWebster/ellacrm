@@ -196,7 +196,7 @@ export function timeBlockToGoogle(tb: {
 }) {
   return {
     summary: tb.title,
-    description: tb.category ? `Bloom: ${tb.category}` : undefined,
+    description: tb.category ? `SWAGR: ${tb.category}` : undefined,
     start: { dateTime: new Date(tb.start_time).toISOString() },
     end:   { dateTime: new Date(tb.end_time).toISOString() },
     recurrence: tb.recurrence,

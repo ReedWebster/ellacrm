@@ -21,7 +21,7 @@ function AppContent() {
   const [activeView, setActiveView] = useState<ViewKey>('dashboard')
   const [oauthBanner, setOauthBanner] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
 
-  // Continuously pull Google Calendar changes into Bloom (mount, focus, every 5 min)
+  // Continuously pull Google Calendar changes into SWAGR (mount, focus, every 5 min)
   useAutoSyncGoogle(!!user)
 
   // Handle OAuth callback redirect from google-oauth-callback Edge Function

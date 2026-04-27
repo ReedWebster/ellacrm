@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['bloom-icon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['swagr-icon.svg', 'apple-touch-icon.png'],
       workbox: {
         skipWaiting: true,
         clientsClaim: true,

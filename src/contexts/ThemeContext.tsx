@@ -14,7 +14,8 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem('bloom-theme')
+    // Read new key first, fall back to legacy key so existing users keep their preference
+    const stored = localStorage.getItem('swagr-theme') ?? localStorage.getItem('bloom-theme')
     if (stored === 'dark' || stored === 'light') return stored
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   })
@@ -26,7 +27,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } else {
       root.classList.remove('dark')
     }
-    localStorage.setItem('bloom-theme', theme)
+    localStorage.setItem('swagr-theme', theme)
+    localStorage.removeItem('bloom-theme')
   }, [theme])
 
   const toggle = () => setTheme(t => (t === 'light' ? 'dark' : 'light'))

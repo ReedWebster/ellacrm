@@ -114,7 +114,7 @@ type PushAction =
   | { action: 'update'; external_id: string; time_block: TimeBlock; recurrence?: string[] }
   | { action: 'delete'; external_id: string }
 
-// Translate Bloom's repeat options into Google RRULE strings.
+// Translate SWAGR's repeat options into Google RRULE strings.
 // `daily | weekly | weekdays | weekends` plus an optional UNTIL date.
 export function repeatFreqToRRule(freq: string, untilDate?: string): string | null {
   let rule = ''

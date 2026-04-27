@@ -1,4 +1,4 @@
-// Push local Bloom events that have no external_id up to Google.
+// Push local SWAGR events that have no external_id up to Google.
 // Used right after OAuth connect so pre-existing events appear on Google too.
 // Skips repeating-series occurrences (those are RRULE-translated separately).
 
