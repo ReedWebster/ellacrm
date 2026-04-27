@@ -48,6 +48,9 @@ Deno.serve(async (req) => {
       refresh_token: tokens.refresh_token,
       access_token: tokens.access_token,
       token_expires_at: expiresAt,
+      // Reset incremental sync cursors so the next sync does a fresh full pull
+      sync_token: null,
+      sync_tokens: {},
     }, { onConflict: 'user_id,provider' })
 
   if (upsertErr) {

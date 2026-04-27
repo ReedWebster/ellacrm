@@ -18,6 +18,7 @@ export function GoogleConnectCard() {
   const [state, setState] = useState<{ connected: boolean; email?: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [details, setDetails] = useState<Record<string, { upserts: number; deletes: number; full: boolean; error?: string }> | null>(null)
 
   async function refresh() {
     setState(await isGoogleConnected())
@@ -44,11 +45,15 @@ export function GoogleConnectCard() {
   }
 
   async function manualSync() {
-    setBusy(true); setMsg(null)
+    setBusy(true); setMsg(null); setDetails(null)
     const r = await syncFromGoogle()
-    setMsg(r.ok
-      ? `Synced ${r.upserts} events${r.deletes ? `, removed ${r.deletes}` : ''}.`
-      : `Sync failed (${r.status}): ${r.error}`)
+    if (r.ok) {
+      const calCount = r.calendars ?? '?'
+      setMsg(`Synced ${r.upserts} events${r.deletes ? `, removed ${r.deletes}` : ''} across ${calCount} calendar${calCount === 1 ? '' : 's'}.`)
+      setDetails(r.per_calendar ?? null)
+    } else {
+      setMsg(`Sync failed (${r.status}): ${r.error}`)
+    }
     setBusy(false)
   }
 
@@ -123,6 +128,22 @@ export function GoogleConnectCard() {
         <p className="mt-2 text-xs text-linen-500 dark:text-ink-300 flex items-center gap-1.5">
           <AlertCircle size={12} /> {msg}
         </p>
+      )}
+      {details && Object.keys(details).length > 0 && (
+        <details className="mt-2 text-xs">
+          <summary className="cursor-pointer text-linen-500 dark:text-ink-300">Per-calendar details</summary>
+          <ul className="mt-1.5 space-y-0.5 ml-4">
+            {Object.entries(details).map(([id, info]) => (
+              <li key={id} className="font-mono text-[11px] text-linen-600 dark:text-ink-200 break-all">
+                <span className="text-linen-400 dark:text-ink-400">{id}:</span>{' '}
+                {info.error
+                  ? <span className="text-rose-500">error: {info.error}</span>
+                  : <>+{info.upserts} -{info.deletes} {info.full ? '(full)' : '(incr)'}</>
+                }
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   )
