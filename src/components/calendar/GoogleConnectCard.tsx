@@ -153,7 +153,7 @@ export function GoogleConnectCard() {
                     : (
                       <div className="ml-2">
                         <div>+{upserts} -{deletes} {full ? '(full)' : '(incr)'}{raw !== undefined && ` | raw=${raw}`}{dropped ? ` dropped=${dropped}` : ''}{cancelled ? ` cancelled=${cancelled}` : ''}{errors ? ` upsertErr=${errors}` : ''}</div>
-                        {sample && (raw ?? 0) > 0 && (
+                        {!!sample && (raw ?? 0) > 0 && (
                           <details className="mt-0.5">
                             <summary className="cursor-pointer text-linen-400 dark:text-ink-400">sample event</summary>
                             <pre className="mt-1 text-[10px] whitespace-pre-wrap">{JSON.stringify(sample, null, 2).slice(0, 500)}</pre>
