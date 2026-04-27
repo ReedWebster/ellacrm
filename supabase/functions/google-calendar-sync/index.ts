@@ -1,8 +1,5 @@
-// Pull events from Google Calendar into time_blocks.
-// Uses sync_token for incremental updates; falls back to full sync when missing/expired.
-// Invokable by:
-//   - The user (Authorization: Bearer <user JWT>) — syncs that user's calendar.
-//   - pg_cron / scheduled — passes ?user_id=<uuid> + service-role auth.
+// Pull events from ALL Google Calendars the user has access to into time_blocks.
+// Per-calendar incremental sync_tokens stored in calendar_integrations.sync_tokens (jsonb).
 
 import { corsHeaders } from '../_shared/cors.ts'
 import {
@@ -19,15 +16,12 @@ Deno.serve(async (req) => {
   const url = new URL(req.url)
   const supabase = adminClient()
 
-  // Resolve user: prefer JWT, fall back to ?user_id=
   let userId: string | null = null
   const user = await userFromAuthHeader(req.headers.get('Authorization'))
   if (user) userId = user.id
   else userId = url.searchParams.get('user_id')
 
-  if (!userId) {
-    return json({ error: 'unauthorized' }, 401)
-  }
+  if (!userId) return json({ error: 'unauthorized' }, 401)
 
   try {
     const { row, accessToken } = await getValidAccessToken(supabase, userId)
@@ -38,26 +32,89 @@ Deno.serve(async (req) => {
   }
 })
 
+type CalendarListEntry = {
+  id: string
+  summary: string
+  primary?: boolean
+  accessRole?: string
+  selected?: boolean
+}
+
+async function listCalendars(accessToken: string): Promise<CalendarListEntry[]> {
+  const r = await fetch(
+    'https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader',
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  )
+  if (!r.ok) {
+    // If scope is missing (older OAuth grant), fall back to primary only
+    if (r.status === 403) return [{ id: 'primary', summary: 'primary' }]
+    throw new Error(`calendarList failed: ${r.status} ${await r.text()}`)
+  }
+  const data = await r.json() as { items: CalendarListEntry[] }
+  return data.items ?? []
+}
+
 async function runSync(
   supabase: ReturnType<typeof adminClient>,
   userId: string,
   row: any,
   accessToken: string,
 ) {
+  const calendars = await listCalendars(accessToken)
+  const syncTokens: Record<string, string> = { ...(row.sync_tokens ?? {}) }
+  const perCalendar: Record<string, { upserts: number; deletes: number; full: boolean; error?: string }> = {}
+  let totalUpserts = 0
+  let totalDeletes = 0
+
+  for (const cal of calendars) {
+    try {
+      const result = await syncOneCalendar(supabase, userId, accessToken, cal.id, syncTokens[cal.id])
+      perCalendar[cal.id] = result
+      totalUpserts += result.upserts
+      totalDeletes += result.deletes
+      if (result.nextSyncToken) syncTokens[cal.id] = result.nextSyncToken
+    } catch (e) {
+      perCalendar[cal.id] = { upserts: 0, deletes: 0, full: false, error: String(e) }
+    }
+  }
+
+  await supabase
+    .from('calendar_integrations')
+    .update({
+      sync_tokens: syncTokens,
+      last_synced_at: new Date().toISOString(),
+    })
+    .eq('id', row.id)
+
+  return {
+    ok: true,
+    upserts: totalUpserts,
+    deletes: totalDeletes,
+    full_sync: Object.values(perCalendar).some(c => c.full),
+    calendars: calendars.length,
+    per_calendar: perCalendar,
+  }
+}
+
+async function syncOneCalendar(
+  supabase: ReturnType<typeof adminClient>,
+  userId: string,
+  accessToken: string,
+  calendarId: string,
+  storedSyncToken: string | undefined,
+) {
   let pageToken: string | undefined
-  let syncToken: string | undefined = row.sync_token
+  let syncToken = storedSyncToken
   let nextSyncToken: string | undefined
   let upserts = 0
   let deletes = 0
   let usedFullSync = false
 
-  // Loop through pages
   while (true) {
     const params = new URLSearchParams()
     if (syncToken) {
       params.set('syncToken', syncToken)
     } else {
-      // Full sync window — last 30 days through 365 days ahead
       const past = new Date(Date.now() - 30 * 86400_000).toISOString()
       const future = new Date(Date.now() + 365 * 86400_000).toISOString()
       params.set('timeMin', past)
@@ -70,17 +127,16 @@ async function runSync(
     params.set('maxResults', '250')
 
     const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
     )
 
-    // 410 Gone = sync_token expired. Restart with full sync.
     if (res.status === 410 && syncToken) {
       syncToken = undefined
       pageToken = undefined
       continue
     }
-    if (!res.ok) throw new Error(`Google list events failed: ${res.status} ${await res.text()}`)
+    if (!res.ok) throw new Error(`list events ${res.status}: ${await res.text()}`)
     const data = await res.json() as {
       items: GoogleEvent[]
       nextPageToken?: string
@@ -88,21 +144,19 @@ async function runSync(
     }
 
     for (const ev of data.items ?? []) {
-      // Cancelled events come through as deletions in incremental sync
       if (ev.status === 'cancelled') {
-        const { error, count } = await supabase
+        const { count } = await supabase
           .from('time_blocks')
           .delete({ count: 'exact' })
           .eq('external_id', ev.id)
-        if (!error && count) deletes += count
+        if (count) deletes += count
         continue
       }
-      const row = googleToTimeBlock(ev, userId)
-      if (!row) continue
-      // Upsert keyed on external_id
+      const block = googleToTimeBlock(ev, userId)
+      if (!block) continue
       const { error } = await supabase
         .from('time_blocks')
-        .upsert(row, { onConflict: 'external_id' })
+        .upsert(block, { onConflict: 'external_id' })
       if (!error) upserts += 1
     }
 
@@ -114,16 +168,7 @@ async function runSync(
     break
   }
 
-  // Persist new sync token + last_synced_at
-  await supabase
-    .from('calendar_integrations')
-    .update({
-      sync_token: nextSyncToken ?? row.sync_token,
-      last_synced_at: new Date().toISOString(),
-    })
-    .eq('id', row.id)
-
-  return { ok: true, upserts, deletes, full_sync: usedFullSync }
+  return { upserts, deletes, full: usedFullSync, nextSyncToken }
 }
 
 function json(body: unknown, status = 200) {

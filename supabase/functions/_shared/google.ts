@@ -15,6 +15,7 @@ export const CALLBACK_URI = `${SUPABASE_URL}/functions/v1/google-oauth-callback`
 
 export const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/calendar.calendarlist.readonly',
   'https://www.googleapis.com/auth/calendar.settings.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
   'openid',

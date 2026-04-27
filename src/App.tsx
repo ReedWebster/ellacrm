@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { syncFromGoogle } from './lib/calendarSync'
+import { useAutoSyncGoogle } from './hooks/useAutoSyncGoogle'
 import LoginScreen from './components/auth/LoginScreen'
 import Layout from './components/layout/Layout'
 import DailyBrief from './components/dashboard/DailyBrief'
@@ -19,6 +20,9 @@ function AppContent() {
   const { user, loading } = useAuth()
   const [activeView, setActiveView] = useState<ViewKey>('dashboard')
   const [oauthBanner, setOauthBanner] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
+
+  // Continuously pull Google Calendar changes into Bloom (mount, focus, every 5 min)
+  useAutoSyncGoogle(!!user)
 
   // Handle OAuth callback redirect from google-oauth-callback Edge Function
   useEffect(() => {
