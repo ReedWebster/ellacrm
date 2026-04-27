@@ -46,7 +46,9 @@ export function GoogleConnectCard() {
   async function manualSync() {
     setBusy(true); setMsg(null)
     const r = await syncFromGoogle()
-    setMsg(r ? `Synced ${r.upserts} events${r.deletes ? `, removed ${r.deletes}` : ''}.` : 'Sync failed.')
+    setMsg(r.ok
+      ? `Synced ${r.upserts} events${r.deletes ? `, removed ${r.deletes}` : ''}.`
+      : `Sync failed (${r.status}): ${r.error}`)
     setBusy(false)
   }
 

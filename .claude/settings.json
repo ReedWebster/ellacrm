@@ -12,7 +12,10 @@
       "Bash(node --input-type=module --eval \":*)",
       "Bash(git --version)",
       "Bash(chmod +x \"/Users/reedwebster/Desktop/Ella CRM/.git/hooks/post-commit\")",
-      "Bash(npm install -D vite-plugin-pwa sharp)"
+      "Bash(npm install -D vite-plugin-pwa sharp)",
+      "WebFetch(domain:ellacrm.vercel.app)",
+      "Bash(supabase --version)",
+      "Bash(npx supabase:*)"
     ],
     "additionalDirectories": [
       "/Users/reedwebster/Desktop/Ella CRM"

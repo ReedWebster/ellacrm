@@ -9,6 +9,10 @@ export const APP_URL              = Deno.env.get('APP_URL') ?? 'http://localhost
 export const SUPABASE_URL         = Deno.env.get('SUPABASE_URL')!
 export const SERVICE_ROLE_KEY     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+// Canonical redirect URI used by both start (auth code request) and callback (token exchange).
+// MUST match what's registered in Google Cloud Console exactly.
+export const CALLBACK_URI = `${SUPABASE_URL}/functions/v1/google-oauth-callback`
+
 export const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar.settings.readonly',

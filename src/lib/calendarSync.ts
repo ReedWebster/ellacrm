@@ -33,11 +33,20 @@ export async function disconnectGoogle(): Promise<void> {
   await supabase.from('calendar_integrations').delete().eq('provider', 'google')
 }
 
-export async function syncFromGoogle(): Promise<{ upserts: number; deletes: number; full_sync: boolean } | null> {
+export async function syncFromGoogle(): Promise<
+  | { ok: true; upserts: number; deletes: number; full_sync: boolean }
+  | { ok: false; status: number; error: string }
+> {
   const headers = await authHeader()
   const r = await fetch(`${FUNCTIONS_URL}/google-calendar-sync`, { method: 'POST', headers })
-  if (!r.ok) return null
-  return r.json()
+  const text = await r.text()
+  if (!r.ok) return { ok: false, status: r.status, error: text || r.statusText }
+  try {
+    const data = JSON.parse(text)
+    return { ok: true, upserts: data.upserts ?? 0, deletes: data.deletes ?? 0, full_sync: !!data.full_sync }
+  } catch {
+    return { ok: false, status: r.status, error: `non-JSON response: ${text.slice(0, 200)}` }
+  }
 }
 
 type PushAction =

@@ -4,6 +4,7 @@
 import {
   adminClient,
   APP_URL,
+  CALLBACK_URI,
   emailFromIdToken,
   exchangeCode,
 } from '../_shared/google.ts'
@@ -26,12 +27,10 @@ Deno.serve(async (req) => {
     return redirect(`${APP_URL}/?google_error=invalid_state`)
   }
 
-  // Redirect URI MUST match the one used in start; reconstruct it from this function's URL.
-  const redirectUri = `${url.origin}${url.pathname}`
-
+  // Use the canonical CALLBACK_URI — must match exactly what start used and what's registered in Google Cloud.
   let tokens
   try {
-    tokens = await exchangeCode(code, redirectUri)
+    tokens = await exchangeCode(code, CALLBACK_URI)
   } catch (e) {
     return redirect(`${APP_URL}/?google_error=${encodeURIComponent(String(e))}`)
   }

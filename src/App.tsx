@@ -28,10 +28,10 @@ function AppContent() {
       setOauthBanner({ kind: 'success', text: 'Google Calendar connected. Syncing…' })
       setActiveView('calendar')
       syncFromGoogle().then(r => {
-        setOauthBanner(r
+        setOauthBanner(r.ok
           ? { kind: 'success', text: `Synced ${r.upserts} events from Google.` }
-          : { kind: 'error', text: 'Initial sync failed. Try Sync now.' })
-        setTimeout(() => setOauthBanner(null), 4000)
+          : { kind: 'error', text: `Sync failed (${r.status}): ${r.error}` })
+        setTimeout(() => setOauthBanner(null), 8000)
       })
       window.history.replaceState({}, '', window.location.pathname)
     } else if (params.has('google_error')) {
