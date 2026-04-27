@@ -550,11 +550,11 @@ export default function CalendarView() {
                   {dayBlocks.slice(0, 3).map(b => (
                     <div
                       key={b.id}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-white text-[11px] leading-tight truncate cursor-pointer"
+                      className="flex items-start gap-1 px-1.5 py-0.5 rounded-md text-white text-[11px] leading-tight cursor-pointer"
                       style={{ backgroundColor: colorOf(b) }}
                       onClick={e => { e.stopPropagation(); openEdit(b) }}
                     >
-                      <span className="truncate font-medium">{b.title}</span>
+                      <span className="font-medium break-words min-w-0">{b.title}</span>
                     </div>
                   ))}
                   {dayBlocks.length > 3 && (
@@ -761,8 +761,8 @@ export default function CalendarView() {
                           }
                         }}
                       >
-                        <div className="px-2 py-1 h-full flex flex-col justify-start">
-                          <p className="text-[11px] font-semibold text-white leading-tight truncate">{block.title}</p>
+                        <div className="px-2 py-1 h-full flex flex-col justify-start overflow-hidden">
+                          <p className="text-[11px] font-semibold text-white leading-tight break-words">{block.title}</p>
                           {hPx > 30 && (
                             <p className="text-[10px] text-white/75 leading-tight mt-0.5">
                               {formatTime(st.getHours(), st.getMinutes())} – {formatTime(et.getHours(), et.getMinutes())}
